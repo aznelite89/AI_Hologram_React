@@ -1144,7 +1144,7 @@ function resetInactivityTimer() {
     location.reload()
   }, INACTIVITY_DURATION)
 
-  console.log("Inactivity timer reset")
+  console.log("Inactivity timer reset on main.jsx")
 }
 
 function startInactivityMonitoring() {
