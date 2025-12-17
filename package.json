@@ -1,0 +1,30 @@
+{
+  "name": "lip-synced-avatar",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^7.1.2",
+    "@vitejs/plugin-react": "^4.3.1"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.23",
+    "@avaturn/sdk": "^1.1.4",
+    "@tensorflow-models/coco-ssd": "^2.2.3",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
+    "ai": "^5.0.29",
+    "bootstrap-icons": "^1.13.1",
+    "firebase": "^10.12.5",
+    "interactjs": "^1.10.27",
+    "openai": "^5.20.1",
+    "three": "^0.179.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
