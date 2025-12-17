@@ -56,7 +56,7 @@ export default function App() {
           </svg>
         </button>
 
-        <div className="button-instruction">Tap to Talk</div>
+        <div className="button-instruction">Tap Microphone to Talk</div>
         <button id="btn-main-microphone" type="button">
           <i className="fas fa-microphone"></i>
         </button>
