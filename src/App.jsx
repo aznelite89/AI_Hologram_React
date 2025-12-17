@@ -1,7 +1,11 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { startLegacyApp } from "./legacy/app.js"
+import ChatPanel from "./components/ChatPanel.jsx"
 
 export default function App() {
+  const [conversation, setConversation] = useState("No Conversation History")
+  const [voiceStatus, setVoiceStatus] = useState("Idle")
+
   useEffect(() => {
     let api
     ;(async () => {
@@ -56,20 +60,12 @@ export default function App() {
         <button id="btn-main-microphone" type="button">
           <i className="fas fa-microphone"></i>
         </button>
-
-        <div id="feedback-container"></div>
-      </div>
-
-      <div id="conversation-history-container">
-        <div id="conversation-history"></div>
-        <div id="voice-status"></div>
-        <button id="push-to-talk" type="button">
-          <i className="fas fa-microphone"></i>
-        </button>
-        <button id="btn-view-conversation" type="button">
-          View Conversation
-        </button>
-        <div id="cycle-status"></div>
+        <ChatPanel
+          history={conversation}
+          voiceStatus={voiceStatus}
+          onViewConversation={() => console.log("View conversation")}
+          onPushToTalk={() => setVoiceStatus("Listening...")}
+        />
       </div>
 
       <video id="webcam-feed" autoPlay muted playsInline></video>
