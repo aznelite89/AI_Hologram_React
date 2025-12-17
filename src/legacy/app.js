@@ -1805,7 +1805,7 @@ async function onWindowResize() {
 let __rafId = null
 function animate() {
   __rafId = requestAnimationFrame(animate)
-const mixerUpdateDelta = clock.getDelta()
+  const mixerUpdateDelta = clock.getDelta()
 
   mixer.update(mixerUpdateDelta)
 
@@ -1823,14 +1823,13 @@ const mixerUpdateDelta = clock.getDelta()
 }
 // ====================================
 
-
-
 export async function startLegacyApp() {
   await init()
 
   // keep any optional hooks that depended on DOM after init
   const btn = document.querySelector("#buttonOpen")
-  if (btn && typeof openIframe === "function") btn.addEventListener("click", openIframe)
+  if (btn && typeof openIframe === "function")
+    btn.addEventListener("click", openIframe)
 
   return {
     destroy() {
