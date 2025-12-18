@@ -8,6 +8,7 @@ const initialState = fromJS({
   conversationVisible: [],
   conversationFull: [],
   sessionId: null,
+  isConversationOpen: false,
 })
 
 const speechSlice = createSlice({
@@ -30,7 +31,7 @@ const speechSlice = createSlice({
         })
       )
     },
-    resetConversation: (state, action) => {
+    resetConversation: (state) => {
       return state.merge(
         fromJS({
           conversationVisible: [],
@@ -39,10 +40,17 @@ const speechSlice = createSlice({
         })
       )
     },
+    toggleConversationOpen: (state) => {
+      return state.update("isConversationOpen", (v) => !v)
+    },
   },
 })
 
-export const { setSpeechState, setConversation, resetConversation } =
-  speechSlice.actions
+export const {
+  setSpeechState,
+  setConversation,
+  resetConversation,
+  toggleConversationOpen,
+} = speechSlice.actions
 
 export default speechSlice.reducer

@@ -1,18 +1,95 @@
-import React from "react"
+import React, { useMemo, useState } from "react"
 
 const ChatPanel = ({
-  onViewConversation,
-  onPushToTalk,
-  voiceStatus = "",
   visible = [],
-  sessionId = null,
+  full = [],
+  voiceStatus = "",
+  isListening,
+  isProcessing,
+  isConversationOpen,
+  onToggleConversation,
+  onPushToTalk,
+  onSendText, // <-- add this prop (SpeechEngine.sendText)
 }) => {
+  const [text, setText] = useState("")
+
+  const handleSend = async () => {
+    const msg = text.trim()
+    if (!msg) return
+    if (isProcessing) return
+    setText("")
+    await onSendText?.(msg)
+  }
+
+  const inputControlsStyle = useMemo(
+    () => ({
+      display: "flex",
+      gap: "10px",
+      padding: "15px",
+      background: "rgba(255, 255, 255, 0.95)",
+      borderBottom: "1px solid #ddd",
+      alignItems: "center",
+    }),
+    []
+  )
+
+  const textInputStyle = useMemo(
+    () => ({
+      flex: 1,
+      padding: "10px",
+      border: "1px solid #ccc",
+      borderRadius: "5px",
+      fontSize: "14px",
+    }),
+    []
+  )
+
+  const sendBtnStyle = useMemo(
+    () => ({
+      width: "45px",
+      height: "45px",
+      borderRadius: "50%",
+      border: "none",
+      background: "#4CAF50",
+      color: "white",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+      opacity: isProcessing ? 0.6 : 1,
+    }),
+    [isProcessing]
+  )
+
+  const micBtnStyle = useMemo(
+    () => ({
+      width: "45px",
+      height: "45px",
+      borderRadius: "50%",
+      border: "none",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+      opacity: isProcessing ? 0.6 : 1,
+    }),
+    [isProcessing]
+  )
+
   return (
     <div id="conversation-container">
-      <button id="btn-view-conversation" onClick={onViewConversation}>
+      <button id="btn-view-conversation" onClick={onToggleConversation}>
         <span>
-          {/* svg unchanged */}
-          <svg width="40" height="40" viewBox="0 0 180 180" fill="none">
+          <svg
+            width="40"
+            height="40"
+            viewBox="0 0 180 180"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ color: "#ffe457" }}
+          >
             <path
               d="M59.9995 75H60.0745M89.9995 75H90.0745M120 75H120.075M157.5 112.5C157.5 116.478 155.919 120.294 153.106 123.107C150.293 125.92 146.478 127.5 142.5 127.5H52.4995L22.4995 157.5V37.5C22.4995 33.5218 24.0799 29.7064 26.8929 26.8934C29.706 24.0804 33.5213 22.5 37.4995 22.5H142.5C146.478 22.5 150.293 24.0804 153.106 26.8934C155.919 29.7064 157.5 33.5218 157.5 37.5V112.5Z"
               stroke="#ffe457"
@@ -22,31 +99,71 @@ const ChatPanel = ({
             />
           </svg>
         </span>
-        View Full Conversation
+        {isConversationOpen ? "Hide Conversation" : "View Full Conversation"}
       </button>
 
-      <div id="conversation-history-container">
+      <div
+        id="conversation-history-container"
+        className={isConversationOpen ? "open" : "closed"}
+      >
+        {/* ✅ Legacy-styled voice-input-controls */}
+        <div id="voice-input-controls" style={inputControlsStyle}>
+          <input
+            id="voice-text-input"
+            type="text"
+            placeholder="Type your message..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSend()
+            }}
+            disabled={isProcessing}
+            style={textInputStyle}
+          />
+
+          <button
+            id="voice-send-btn"
+            type="button"
+            onClick={handleSend}
+            disabled={isProcessing}
+            style={sendBtnStyle}
+            aria-label="Send"
+          >
+            <i className="fas fa-paper-plane"></i>
+          </button>
+
+          <button
+            id="voice-mic-btn"
+            type="button"
+            onClick={onPushToTalk}
+            style={micBtnStyle}
+            aria-label="Push to talk"
+          >
+            {isProcessing ? (
+              <i className="fas fa-spinner fa-spin"></i>
+            ) : isListening ? (
+              <i className="fas fa-microphone-slash"></i>
+            ) : (
+              <i className="fas fa-microphone"></i>
+            )}
+          </button>
+        </div>
+
         <div id="conversation-history">
-          {visible.length === 0 ? (
-            <div>No Conversation History</div>
-          ) : (
-            visible.map((m, idx) => (
-              <div key={idx} className={`msg ${m.role}`}>
-                {m.content}
-              </div>
-            ))
-          )}
+          {full.length === 0
+            ? "No Conversation History"
+            : full.map((m, idx) => <div key={idx}>{m.content}</div>)}
         </div>
 
         <div id="conversation-toolbar">
           <div id="voice-status">{voiceStatus}</div>
-          {/* optional debug */}
-          {sessionId ? (
-            <div className="session-pill">Session: {sessionId}</div>
-          ) : null}
 
           <button id="push-to-talk" onClick={onPushToTalk}>
-            Start
+            {isProcessing
+              ? "Processing..."
+              : isListening
+              ? "Listening..."
+              : "Start"}
           </button>
         </div>
       </div>
