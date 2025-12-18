@@ -35,6 +35,11 @@ const ActionBtnPanel = () => {
     dispatch(toggleConversationOpen())
   }
 
+  const onSendText = async (msg) => {
+    const engine = getSpeechEngine()
+    await engine?.sendText?.(msg)
+  }
+
   return (
     <div id="action-buttons-container">
       {/* Reset */}
@@ -64,6 +69,7 @@ const ActionBtnPanel = () => {
         isConversationOpen={isConversationOpen}
         onToggleConversation={onToggleConversation}
         onPushToTalk={onMic}
+        onSendText={onSendText}
       />
     </div>
   )

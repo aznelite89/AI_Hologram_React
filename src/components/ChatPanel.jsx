@@ -9,17 +9,9 @@ const ChatPanel = ({
   isConversationOpen,
   onToggleConversation,
   onPushToTalk,
-  onSendText, // <-- add this prop (SpeechEngine.sendText)
+  onSendText,
 }) => {
   const [text, setText] = useState("")
-
-  const handleSend = async () => {
-    const msg = text.trim()
-    if (!msg) return
-    if (isProcessing) return
-    setText("")
-    await onSendText?.(msg)
-  }
 
   const inputControlsStyle = useMemo(
     () => ({
@@ -44,7 +36,7 @@ const ChatPanel = ({
     []
   )
 
-  const sendBtnStyle = useMemo(
+  const sendButtonStyle = useMemo(
     () => ({
       width: "45px",
       height: "45px",
@@ -62,7 +54,7 @@ const ChatPanel = ({
     [isProcessing]
   )
 
-  const micBtnStyle = useMemo(
+  const micButtonStyle = useMemo(
     () => ({
       width: "45px",
       height: "45px",
@@ -77,6 +69,13 @@ const ChatPanel = ({
     }),
     [isProcessing]
   )
+
+  const handleSend = async () => {
+    const msg = text.trim()
+    if (!msg || isProcessing) return
+    setText("")
+    await onSendText?.(msg)
+  }
 
   return (
     <div id="conversation-container">
@@ -106,38 +105,36 @@ const ChatPanel = ({
         id="conversation-history-container"
         className={isConversationOpen ? "open" : "closed"}
       >
-        {/* ✅ Legacy-styled voice-input-controls */}
+        {/* ✅ Legacy voice-input-controls */}
         <div id="voice-input-controls" style={inputControlsStyle}>
           <input
             id="voice-text-input"
             type="text"
             placeholder="Type your message..."
             value={text}
+            disabled={isProcessing}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSend()
             }}
-            disabled={isProcessing}
             style={textInputStyle}
           />
 
           <button
-            id="voice-send-btn"
             type="button"
+            id="voice-send-btn"
             onClick={handleSend}
             disabled={isProcessing}
-            style={sendBtnStyle}
-            aria-label="Send"
+            style={sendButtonStyle}
           >
             <i className="fas fa-paper-plane"></i>
           </button>
 
           <button
-            id="voice-mic-btn"
             type="button"
+            id="voice-mic-btn"
             onClick={onPushToTalk}
-            style={micBtnStyle}
-            aria-label="Push to talk"
+            style={micButtonStyle}
           >
             {isProcessing ? (
               <i className="fas fa-spinner fa-spin"></i>
