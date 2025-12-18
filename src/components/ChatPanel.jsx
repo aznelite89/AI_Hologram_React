@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react"
+import { censorBadWords } from "../util/common"
 
 const ChatPanel = ({
   visible = [],
@@ -149,7 +150,28 @@ const ChatPanel = ({
         <div id="conversation-history">
           {full.length === 0
             ? "No Conversation History"
-            : full.map((m, idx) => <div key={idx}>{m.content}</div>)}
+            : full.map((msg, idx) => {
+                const isUser = msg.role === "user"
+                const bubbleStyle = {
+                  margin: "5px 0",
+                  padding: "8px 12px",
+                  borderRadius: "5px",
+                  background: isUser ? "transparent" : "#FFFFFF40",
+                  color: isUser ? "white" : "#FFE457",
+                  marginLeft: isUser ? "auto" : undefined,
+                  marginRight: !isUser ? "auto" : undefined,
+                  textAlign: isUser ? "right" : "left",
+                  maxWidth: "95%",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }
+
+                return (
+                  <div key={idx} style={bubbleStyle}>
+                    {censorBadWords(msg.content)}
+                  </div>
+                )
+              })}
         </div>
 
         <div id="conversation-toolbar">
