@@ -2,64 +2,47 @@ import { createSlice } from "@reduxjs/toolkit"
 import { fromJS } from "immutable"
 
 const initialState = fromJS({
-  isProcessing: false,
   isListening: false,
-  conversationHistory: [],
-  lastInteractionTime: Date.now(),
+  isProcessing: false,
+  voiceStatus: "Idle",
+  conversationVisible: [],
+  conversationFull: [],
+  sessionId: null,
 })
 
 const speechSlice = createSlice({
-  name: "chat",
+  name: "speech",
   initialState,
   reducers: {
-    setIsProcessing: (state, action) => {
-      return state.merge(
-        fromJS({
-          isProcessing: action.payload,
-        })
-      )
-    },
-    setIsListening: (state, action) => {
-      return state.merge(
-        fromJS({
-          isListening: action.payload,
-        })
-      )
-    },
-    addConversationHistory: (state) => {
-      return state
-    },
-    addConversationHistorySuccess: (state, action) => {
+    setSpeechState: (state, action) => {
       return state.merge(
         fromJS({
           ...action.payload,
         })
       )
     },
-    setConversationHistory: (state, action) => {
+    setConversation: (state, action) => {
       return state.merge(
         fromJS({
-          ...action.payload,
+          conversationVisible: action.payload.visible,
+          conversationFull: action.payload.full,
+          sessionId: action.payload.sessionId ?? null,
         })
       )
     },
-    setLastInteractionTime: (state, action) => {
+    resetConversation: (state, action) => {
       return state.merge(
         fromJS({
-          lastInteractionTime: action.payload,
+          conversationVisible: [],
+          conversationFull: [],
+          sessionId: null,
         })
       )
     },
   },
 })
 
-export const {
-  setIsProcessing,
-  setIsListening,
-  addConversationHistory,
-  addConversationHistorySuccess,
-  setConversationHistory,
-  setLastInteractionTime,
-} = speechSlice.actions
+export const { setSpeechState, setConversation, resetConversation } =
+  speechSlice.actions
 
 export default speechSlice.reducer

@@ -178,6 +178,8 @@ export class SpeechEngine {
     this.conversationHistory = []
     this.currentSession = null
     this._emitConversation()
+    this._emitState()
+    this.onSession({ sessionId: null })
   }
 
   // ---------------------------
@@ -329,6 +331,8 @@ export class SpeechEngine {
       if (data?.ok) {
         this.currentSession = data.session_id
         this.onSession({ sessionId: this.currentSession })
+        this._emitState()
+        this._emitConversation()
       } else {
         console.log("Failed to fetch session:", data)
       }
