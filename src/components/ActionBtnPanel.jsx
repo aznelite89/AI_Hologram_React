@@ -52,7 +52,11 @@ const ActionBtnPanel = () => {
         </svg>
       </button>
       <div className="button-instruction">Tap Microphone to Talk</div>
-      <button id="btn-main-microphone" onClick={onMic}>
+      <button
+        id="btn-main-microphone"
+        className={isProcessing ? "processing" : ""}
+        onClick={onMic}
+      >
         {isProcessing ? (
           <i className="fas fa-spinner fa-spin"></i>
         ) : isListening ? (
