@@ -780,3 +780,18 @@ modal-hidden {
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
+/* UI hardening for Hologram Kiosk..: no scroll, no selection, no cursor*/
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kiosk-hide-cursor,
+.kiosk-hide-cursor * {
+  cursor: none !important;
+}

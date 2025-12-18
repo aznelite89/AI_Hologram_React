@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { useDispatch } from "react-redux"
 import ActionBtnPanel from "./components/ActionBtnPanel.jsx"
 import TopPanel from "./components/TopPanel/index.jsx"
@@ -8,6 +8,8 @@ import { SpeechEngine } from "./engine/SpeechEngine.js"
 import { setSpeechState, setConversation } from "./slices/speechSlice"
 import { setSpeechEngine } from "./engine/engineRegistry"
 import { CameraEngine } from "./engine/CameraEngine"
+import KioskGuard from "./kiosk/KioskGuard.js"
+import KioskWatchdog from "./kiosk/KioskWatchdog.js"
 
 export default function App() {
   const dispatch = useDispatch()
@@ -89,8 +91,15 @@ export default function App() {
     }
   }, [dispatch])
 
+  useEffect(() => {
+    const t = setInterval(() => window.__KIOSK_PING__?.(), 20000)
+    return () => clearInterval(t)
+  }, [])
+
   return (
     <>
+      <KioskGuard enabled={false} />
+      <KioskWatchdog enabled={true} />
       <TopPanel />
       <div id="container"></div>
       <ActionBtnPanel />
