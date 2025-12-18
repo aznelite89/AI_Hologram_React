@@ -158,6 +158,9 @@ export class CameraEngine {
       if (!this.canTrigger()) return
 
       this.lastPersonDetectedTime = now
+      console.log(
+        `Person detected! Confidence: ${(people[0].score * 100).toFixed(1)}%`
+      )
       this.onPerson({ score: people[0].score, predictions })
     } finally {
       this._busy = false
