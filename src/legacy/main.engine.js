@@ -14,6 +14,7 @@ import * as cocoSsd from "@tensorflow-models/coco-ssd"
 import "@tensorflow/tfjs"
 import "@tensorflow/tfjs-backend-webgl"
 // =======================================================
+console.log("RUNNING src/main.js")
 
 // ========== DOCUMENT CONTENT - LOAD ONCE ==========
 let documentContent = ""
