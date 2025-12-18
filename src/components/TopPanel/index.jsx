@@ -16,7 +16,7 @@ const TopPanel = () => {
         </div>
       </div>
 
-      <video id="webcam-feed" autoPlay muted playsInline></video>
+      <video id="webcam-feed" autoPlay muted playsInline />
       <div id="webcam-label">I'm Going Live Soon!</div>
     </>
   )

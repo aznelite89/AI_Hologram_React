@@ -142,13 +142,45 @@ export class SpeechEngine {
     this._emitState()
   }
 
-  /**
-   * Allow text input in UI (same pipeline as speech)
-   */
+  //Allow text input in UI (same pipeline as speech)
   async sendText(text) {
     const msg = String(text || "").trim()
     if (!msg) return
     await this._processUserMessage(msg)
+  }
+  // Greeting when person detected by camera engine..
+  async speakGreeting() {
+    // IMPORTANT: no conversation history updates
+    if (this.isListening || this.isProcessing) {
+      // Legacy behavior: skip greeting if already busy
+      return
+    }
+
+    // Mark busy so UI mic shows spinner and user can “stop”
+    this.isProcessing = true
+    this._setVoiceStatus("Someone detected! Saying hello...")
+    this._emitState()
+
+    try {
+      const greeting = await this._callOpenAIGreeting()
+      const cleaned = this._sanitizeForSpeech(greeting)
+
+      this._setVoiceStatus("Speaking greeting...")
+      this._emitState()
+
+      await this._speakWithElevenLabs(cleaned)
+
+      this._setVoiceStatus("Ready to talk - Click microphone to speak")
+      this._emitState()
+    } catch (e) {
+      console.error("Greeting failed:", e)
+      this.onError(e)
+      this._setVoiceStatus("Ready to talk - Click microphone to speak")
+      this._emitState()
+    } finally {
+      this.isProcessing = false
+      this._emitState()
+    }
   }
 
   /**
@@ -342,7 +374,7 @@ export class SpeechEngine {
   }
 
   _emitConversation() {
-    // UI typically only shows last 3 (like your DOM code)
+    //only shows last 3
     const visible = this.conversationHistory
       .filter((m) => m.role !== "system")
       .slice(-3)
@@ -447,6 +479,46 @@ CONVERSATION FLOW & HEURISTICS:
 IMPORTANT: Base your answers on the reference knowledge provided above.`
   }
 
+  // OpenAI Greetings
+  async _callOpenAIGreeting() {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY
+    if (!apiKey) throw new Error("Missing VITE_OPENAI_API_KEY")
+
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a friendly AI tour guide at the Singapore Science Centre. Generate a short, natural greeting (1-2 sentences max). Make your greetings witty and comical.",
+          },
+          {
+            role: "user",
+            content:
+              "Someone just appeared in front of you. Greet them with a science joke or quip, direct them to press the red microphone button to talk to you, and scan the QR code that will appear shortly to bring you around the Science Centre on their mobile phones.",
+          },
+        ],
+        max_tokens: 150,
+        temperature: 0.8,
+      }),
+    })
+
+    if (!resp.ok) {
+      const txt = await resp.text()
+      throw new Error(`OpenAI API error: ${resp.status} - ${txt}`)
+    }
+
+    const data = await resp.json()
+    const msg = data?.choices?.[0]?.message?.content?.trim()
+    return msg || "Hello! It's great to see you!"
+  }
+
   // ---------------------------
   // TTS (ElevenLabs) + lips
   // ---------------------------
@@ -496,6 +568,12 @@ IMPORTANT: Base your answers on the reference knowledge provided above.`
     this._startLipsWhileSpeaking(audio)
 
     await audio.play()
+
+    // if stop() was pressed immediately, stop talk and lips ani immediately..
+    if (!this._currentAudio) {
+      this._stopLips()
+      return
+    }
 
     await new Promise((resolve, reject) => {
       audio.onended = resolve

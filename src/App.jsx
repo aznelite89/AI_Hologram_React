@@ -7,11 +7,13 @@ import { HologramEngine } from "./engine/HologramEngine.js"
 import { SpeechEngine } from "./engine/SpeechEngine.js"
 import { setSpeechState, setConversation } from "./slices/speechSlice"
 import { setSpeechEngine } from "./engine/engineRegistry"
+import { CameraEngine } from "./engine/CameraEngine"
 
 export default function App() {
   const dispatch = useDispatch()
   const hologramRef = useRef(null)
   const speechRef = useRef(null)
+  const cameraRef = useRef(null)
 
   useEffect(() => {
     const containerEl = document.getElementById("container")
@@ -26,9 +28,10 @@ export default function App() {
     let cancelled = false
 
     ;(async () => {
+      // initalise Hologram eng
       await hologram.init({ containerEl })
       hologram.start()
-
+      // initalise Speech eng
       const speech = new SpeechEngine({
         hologram,
         onState: (s) => {
@@ -46,11 +49,26 @@ export default function App() {
         },
         onError: (e) => console.error("SpeechEngine error:", e),
       })
-
       speechRef.current = speech
       setSpeechEngine(speech)
-
       await speech.init()
+      // initalise Camera eng
+      const videoEl = document.getElementById("webcam-feed")
+      const camera = new CameraEngine({
+        // block greeting if SpeechEngine is listening/processing
+        canTrigger: () => {
+          const s = speech.getState?.()
+          return !(s?.isListening || s?.isProcessing)
+        },
+        // when person detected -> delegate to Speech Engine (separation)
+        onPerson: async () => {
+          await speech?.speakGreeting?.()
+        },
+        onError: (e) => console.error("CameraEngine error:", e),
+      })
+      cameraRef.current = camera
+      await camera.init({ videoEl })
+      camera.start()
     })()
 
     return () => {
@@ -62,8 +80,12 @@ export default function App() {
       try {
         hologramRef.current?.destroy?.()
       } catch (e) {}
+      try {
+        cameraRef.current?.destroy?.()
+      } catch (e) {}
       speechRef.current = null
       hologramRef.current = null
+      cameraRef.current = null
     }
   }, [dispatch])
 
