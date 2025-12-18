@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react"
 import { useDispatch } from "react-redux"
 import ActionBtnPanel from "./components/ActionBtnPanel.jsx"
 import TopPanel from "./components/TopPanel/index.jsx"
-
 import { HologramEngine } from "./engine/HologramEngine.js"
 import { SpeechEngine } from "./engine/SpeechEngine.js"
 import { setSpeechState, setConversation } from "./slices/speechSlice"
@@ -98,8 +97,8 @@ export default function App() {
 
   return (
     <>
-      {/* <KioskGuard enabled={false} />
-      <KioskWatchdog enabled={true} /> */}
+      <KioskGuard enabled={true} />
+      <KioskWatchdog enabled={true} />
       <TopPanel />
       <div id="container"></div>
       <ActionBtnPanel />
