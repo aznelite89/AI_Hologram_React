@@ -5,7 +5,7 @@ import "@tensorflow/tfjs-backend-webgl"
 const DEFAULTS = {
   detectEveryMs: 2000,
   scoreThreshold: 0.5,
-  cooldownMs: 750000, // previous was 500s
+  cooldownMs: 750000, // previously was 50sec
 }
 
 export class CameraEngine {
@@ -32,6 +32,7 @@ export class CameraEngine {
 
     this.isCameraReady = false
     this.isDetecting = false
+    this.cameraError = null
 
     this.lastPersonDetectedTime = 0
     this._busy = false
@@ -50,8 +51,11 @@ export class CameraEngine {
   }
 
   start() {
-    if (!this.videoEl) return
+    if (!this.videoEl || !this.model) return
     if (this.timer) clearInterval(this.timer)
+
+    this.isDetecting = true
+    this._emitState()
 
     this.timer = setInterval(() => {
       this._tick().catch(this.onError)
@@ -69,11 +73,16 @@ export class CameraEngine {
 
   destroy() {
     this.stop()
+
     try {
-      if (this.stream) {
-        this.stream.getTracks().forEach((t) => t.stop())
-      }
-    } catch (e) {}
+      this.stream?.getTracks()?.forEach((t) => t.stop())
+    } catch {}
+
+    if (this.videoEl) {
+      this.videoEl.srcObject = null
+      this.videoEl.style.display = "none"
+    }
+
     this.stream = null
     this.videoEl = null
     this.model = null
@@ -89,50 +98,34 @@ export class CameraEngine {
 
     if (!navigator.mediaDevices?.getUserMedia) {
       this.isCameraReady = false
-      if (v) v.style.display = "none"
       this._emitState()
       return
     }
 
-    if (v) {
-      v.style.display = "none"
-      v.autoplay = true
-      v.muted = true
-      v.playsInline = true
-    }
-
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
+        video: { facingMode: "user", width: 640, height: 480 },
         audio: false,
       })
 
       v.srcObject = this.stream
+      v.autoplay = true
+      v.muted = true
+      v.playsInline = true
 
-      await new Promise((resolve) => {
-        if (v.readyState >= 2) return resolve()
-        v.onloadedmetadata = () => resolve()
-      })
-
+      await new Promise((r) => (v.onloadedmetadata = r))
       await v.play()
 
       v.style.display = "block"
-
       this.isCameraReady = true
-      this._emitState()
     } catch (e) {
-      if (v) v.style.display = "none"
-
+      v.style.display = "none"
       this.isCameraReady = false
-      this.stream = null
-
-      this._emitState()
-      this.onError?.(e)
+      this.cameraError = e
+      this.onError(e)
     }
+
+    this._emitState()
   }
 
   async _loadModel() {
@@ -140,40 +133,34 @@ export class CameraEngine {
       this.model = await cocoSsd.load()
     } catch (e) {
       this.model = null
+      this.cameraError = e
       this.onError(e)
     }
   }
 
   async _tick() {
-    if (!this.model || !this.videoEl) return
-    if (!this.videoEl.videoWidth) return
+    if (!this.model || !this.videoEl?.videoWidth) return
     if (this._busy) return
 
     this._busy = true
-    this.isDetecting = true
-    this._emitState()
 
     try {
       const predictions = await this.model.detect(this.videoEl)
 
-      const personDetections = predictions.filter(
+      const people = predictions.filter(
         (p) => p.class === "person" && p.score > this.cfg.scoreThreshold
       )
-      if (personDetections.length === 0) return
+
+      if (!people.length) return
 
       const now = Date.now()
-      const best = personDetections[0]
-
-      // cooldown + external gating (speech busy etc)
       if (now - this.lastPersonDetectedTime < this.cfg.cooldownMs) return
       if (!this.canTrigger()) return
 
       this.lastPersonDetectedTime = now
-      this.onPerson({ score: best.score, predictions })
+      this.onPerson({ score: people[0].score, predictions })
     } finally {
       this._busy = false
-      this.isDetecting = false
-      this._emitState()
     }
   }
 
@@ -181,6 +168,7 @@ export class CameraEngine {
     this.onState({
       isCameraReady: this.isCameraReady,
       isDetecting: this.isDetecting,
+      cameraError: this.cameraError,
     })
   }
 }
