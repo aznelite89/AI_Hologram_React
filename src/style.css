@@ -304,7 +304,7 @@ button:focus-visible {
 }
 
 #btn-main-microphone.listening {
-  background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+  background: linear-gradient(135deg, #ff3b3b 0%, #c91d1d 100%);
   animation: pulse-glow 1.5s ease-in-out infinite;
 }
 

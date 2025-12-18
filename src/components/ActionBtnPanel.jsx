@@ -54,7 +54,7 @@ const ActionBtnPanel = () => {
       <div className="button-instruction">Tap Microphone to Talk</div>
       <button
         id="btn-main-microphone"
-        className={isProcessing ? "processing" : ""}
+        className={isProcessing ? "processing" : isListening ? "listening" : ""}
         onClick={onMic}
       >
         {isProcessing ? (

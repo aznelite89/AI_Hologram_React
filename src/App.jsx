@@ -98,8 +98,8 @@ export default function App() {
 
   return (
     <>
-      <KioskGuard enabled={false} />
-      <KioskWatchdog enabled={true} />
+      {/* <KioskGuard enabled={false} />
+      <KioskWatchdog enabled={true} /> */}
       <TopPanel />
       <div id="container"></div>
       <ActionBtnPanel />
