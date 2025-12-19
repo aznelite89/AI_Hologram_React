@@ -7,27 +7,30 @@ import {
 } from "../slices/speechSlice"
 import { getSpeechEngine } from "../engine/engineRegistry"
 import { ArrayEqual } from "../util/common"
+import QrButton from "./QrButton"
 
 const ActionBtnPanel = () => {
   const dispatch = useDispatch()
-  const {
+  const [
     isListening,
     isProcessing,
     voiceStatus,
     isConversationOpen,
     conversationVisible,
     conversationFull,
-  } = useSelector(
-    (state) => ({
-      isListening: state.speech.get("isListening"),
-      isProcessing: state.speech.get("isProcessing"),
-      voiceStatus: state.speech.get("voiceStatus"),
-      isConversationOpen: state.speech.get("isConversationOpen"),
-      conversationVisible: state.speech.get("conversationVisible"),
-      conversationFull: state.speech.get("conversationFull"),
-    }),
-    ArrayEqual
-  )
+    sessionId,
+  ] = useSelector((state) => {
+    const speechState = state.speech
+    return [
+      speechState.get("isListening"),
+      speechState.get("isProcessing"),
+      speechState.get("voiceStatus"),
+      speechState.get("isConversationOpen"),
+      speechState.get("conversationVisible"),
+      speechState.get("conversationFull"),
+      speechState.get("sessionId"),
+    ]
+  }, ArrayEqual)
 
   const visible = useMemo(
     () => conversationVisible?.toJS?.() ?? [],
@@ -66,38 +69,47 @@ const ActionBtnPanel = () => {
   }, [isProcessing, isListening])
 
   return (
-    <div id="action-buttons-container">
-      <div className="button-instruction">Tap to Reset Conversation</div>
-      <button id="btn-refresh-conversation" onClick={onReset}>
-        <svg width="60" height="60" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-0.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14 0.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
-            fill="currentColor"
-          />
-        </svg>
-      </button>
-      <div className="button-instruction">Tap Microphone to Talk</div>
-      <button id="btn-main-microphone" className={micClassName} onClick={onMic}>
-        {isProcessing ? (
-          <i className="fas fa-spinner fa-spin"></i>
-        ) : isListening ? (
-          <i className="fas fa-microphone-slash"></i>
-        ) : (
-          <i className="fas fa-microphone"></i>
-        )}
-      </button>
-      <ChatPanel
-        visible={visible}
-        full={full}
-        voiceStatus={voiceStatus}
-        isListening={isListening}
-        isProcessing={isProcessing}
-        isConversationOpen={isConversationOpen}
-        onToggleConversation={onToggleConversation}
-        onPushToTalk={onMic}
-        onSendText={onSendText}
-      />
-    </div>
+    <>
+      <div id="action-buttons-container">
+        <div className="button-instruction">Tap to Reset Conversation</div>
+        <button id="btn-refresh-conversation" onClick={onReset}>
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-0.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14 0.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+        <div className="button-instruction">Tap Microphone to Talk</div>
+        <button
+          id="btn-main-microphone"
+          className={micClassName}
+          onClick={onMic}
+        >
+          {isProcessing ? (
+            <i className="fas fa-spinner fa-spin"></i>
+          ) : isListening ? (
+            <i className="fas fa-microphone-slash"></i>
+          ) : (
+            <i className="fas fa-microphone"></i>
+          )}
+        </button>
+        <ChatPanel
+          visible={visible}
+          full={full}
+          voiceStatus={voiceStatus}
+          isListening={isListening}
+          isProcessing={isProcessing}
+          isConversationOpen={isConversationOpen}
+          onToggleConversation={onToggleConversation}
+          onPushToTalk={onMic}
+          onSendText={onSendText}
+        />
+      </div>
+      <div id="feedback-container">
+        <QrButton session={sessionId} />
+      </div>
+    </>
   )
 }
 
