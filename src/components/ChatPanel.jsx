@@ -1,8 +1,15 @@
-import React, { memo, useCallback, useMemo, useState } from "react"
+import React, {
+  memo,
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+} from "react"
 import { censorBadWords } from "../util/common"
 
 const ChatPanel = ({
-  visible = [], // kept for API compatibility; not used here.. might be need to remove in futuree
+  visible = [], // kept for API compatibility
   full = [],
   voiceStatus = "",
   isListening,
@@ -13,6 +20,7 @@ const ChatPanel = ({
   onSendText,
 }) => {
   const [text, setText] = useState("")
+  const historyEndRef = useRef(null)
 
   const handleChange = useCallback((e) => {
     setText(e.target.value)
@@ -32,18 +40,29 @@ const ChatPanel = ({
     [handleSend]
   )
 
+  // - exclude system
+  // - show last 3 only
   // Precompute display messages (avoids re-running censor on each render)
   const renderedMessages = useMemo(() => {
     if (!full?.length) return []
-    return full.map((msg, idx) => {
-      const isUser = msg?.role === "user"
-      return {
-        key: msg?.id ?? `${msg?.role ?? "msg"}-${idx}`,
-        className: isUser ? "chat-bubble user" : "chat-bubble assistant",
-        content: censorBadWords(msg?.content ?? ""),
-      }
-    })
+
+    return full
+      .filter((msg) => msg?.role !== "system")
+      .slice(-3)
+      .map((msg, idx) => {
+        const isUser = msg?.role === "user"
+        return {
+          key: msg?.id ?? `${msg?.role ?? "msg"}-${idx}`,
+          className: isUser ? "chat-bubble user" : "chat-bubble assistant",
+          content: censorBadWords(msg?.content ?? ""),
+        }
+      })
   }, [full])
+
+  //auto-scroll behavior
+  useEffect(() => {
+    historyEndRef.current?.scrollIntoView({ behavior: "auto" })
+  }, [renderedMessages.length, isConversationOpen])
 
   return (
     <div id="conversation-container">
@@ -122,6 +141,7 @@ const ChatPanel = ({
                   {m.content}
                 </div>
               ))}
+          <div ref={historyEndRef} />
         </div>
 
         <div id="conversation-toolbar">
