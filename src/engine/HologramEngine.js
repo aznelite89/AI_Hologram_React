@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import Stats from "three/examples/jsm/libs/stats.module.js"
 import { GLTFLoader } from "three/examples/jsm/Addons.js"
+import { PERF } from "../config/performance"
 
 // =======================
 // Morph Target Manager
@@ -13,6 +14,9 @@ class MorphTargetManager {
     this.targetBlendshapes = {}
     this.isTalking = false
     this.availableBlendshapes = new Set()
+
+    // only update blendshapes that are "in motion"
+    this.active = new Set()
 
     this.findBlendshapeMeshes()
     this.initializeBlendshapes()
@@ -48,10 +52,10 @@ class MorphTargetManager {
       console.log(
         `✅ Found ${this.blendshapeMeshes.length} meshes with blendshapes`
       )
-      console.log(
-        "✅ Available blendshapes:",
-        Array.from(this.availableBlendshapes)
-      )
+      // console.log(
+      //   "✅ Available blendshapes:",
+      //   Array.from(this.availableBlendshapes)
+      // )
     }
   }
 
@@ -63,9 +67,13 @@ class MorphTargetManager {
   }
 
   setBlendshape(blendshapeName, value) {
-    if (this.availableBlendshapes.has(blendshapeName)) {
-      this.targetBlendshapes[blendshapeName] = Math.max(0, Math.min(1, value))
-    }
+    if (!this.availableBlendshapes.has(blendshapeName)) return
+
+    const clamped = Math.max(0, Math.min(1, value))
+    this.targetBlendshapes[blendshapeName] = clamped
+
+    // mark as active so update() processes it
+    this.active.add(blendshapeName)
   }
 
   closeMouth() {
@@ -74,6 +82,7 @@ class MorphTargetManager {
       const lower = name.toLowerCase()
       if (lower.includes("mouth") || lower.includes("jaw")) {
         this.targetBlendshapes[name] = 0
+        this.active.add(name) //  ensure it actually lerps down..
       }
     })
     this.setBlendshape("mouthClose", 0.2)
@@ -89,6 +98,7 @@ class MorphTargetManager {
       const lower = name.toLowerCase()
       if (lower.includes("mouth") || lower.includes("jaw")) {
         this.targetBlendshapes[name] = 0
+        this.active.add(name) //ensure reset is applied
       }
     })
 
@@ -175,23 +185,33 @@ class MorphTargetManager {
 
   update(delta) {
     const lerpFactor = 10 * delta
-    this.availableBlendshapes.forEach((blendshapeName) => {
-      if (this.currentBlendshapes[blendshapeName] === undefined) return
+    const EPS = 0.001
 
-      this.currentBlendshapes[blendshapeName] = this.lerp(
-        this.currentBlendshapes[blendshapeName],
-        this.targetBlendshapes[blendshapeName],
-        lerpFactor
-      )
+    // only process active blendshapes
+    // Copy to array because will delete from the Set while iterating
+    const activeNow = Array.from(this.active)
+    if (activeNow.length === 0) return
 
-      this.blendshapeMeshes.forEach(({ mesh, dictionary }) => {
+    for (const blendshapeName of activeNow) {
+      const cur = this.currentBlendshapes[blendshapeName] ?? 0
+      const tgt = this.targetBlendshapes[blendshapeName] ?? 0
+
+      const next = this.lerp(cur, tgt, lerpFactor)
+      this.currentBlendshapes[blendshapeName] = next
+
+      for (const { mesh, dictionary } of this.blendshapeMeshes) {
         const index = dictionary[blendshapeName]
         if (index !== undefined) {
-          mesh.morphTargetInfluences[index] =
-            this.currentBlendshapes[blendshapeName]
+          mesh.morphTargetInfluences[index] = next
         }
-      })
-    })
+      }
+
+      // stop updating once close enough
+      if (Math.abs(next - tgt) < EPS) {
+        this.currentBlendshapes[blendshapeName] = tgt
+        this.active.delete(blendshapeName)
+      }
+    }
   }
 
   lerp(a, b, t) {
@@ -332,7 +352,9 @@ export class HologramEngine {
       stencil: false,
       logarithmicDepthBuffer: false,
     })
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1))
+    console.log("LOW POWER DEVICE: ", PERF.LOW_POWER)
+    console.log("PERF: ", PERF)
+    this.renderer.setPixelRatio(PERF.PIXEL_RATIO)
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.BasicShadowMap
@@ -414,7 +436,6 @@ export class HologramEngine {
     this.stop()
     window.removeEventListener("resize", this._onResize)
 
-    // Dispose renderer + remove canvas
     if (this.renderer) {
       this.renderer.dispose()
       const canvas = this.renderer.domElement
@@ -511,8 +532,10 @@ export class HologramEngine {
 
     this.model.traverse((object) => {
       if (object.isMesh) {
-        object.castShadow = window.innerWidth < 1920
-        object.receiveShadow = window.innerWidth < 1920
+        // preserve your existing behavior, but gate by PERF.SHADOWS
+        const canShadow = !!PERF.SHADOWS && window.innerWidth < 1920
+        object.castShadow = canShadow
+        object.receiveShadow = canShadow
 
         if (object.material) {
           object.material.envMapIntensity = 0.3

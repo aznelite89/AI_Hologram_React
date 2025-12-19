@@ -150,9 +150,8 @@ export class SpeechEngine {
   }
   // Greeting when person detected by camera engine..
   async speakGreeting() {
-    // IMPORTANT: no conversation history updates
     if (this.isListening || this.isProcessing) {
-      // Legacy behavior: skip greeting if already busy
+      // skip greeting if already busy
       return
     }
 
@@ -501,7 +500,7 @@ IMPORTANT: Base your answers on the reference knowledge provided above.`
           {
             role: "user",
             content:
-              "Someone just appeared in front of you. Greet them with a science joke or quip, direct them to press the red microphone button to talk to you, and scan the QR code that will appear shortly to bring you around the Science Centre on their mobile phones.",
+              "Someone just appeared in front of you. Greet them with a science joke or quip, direct them to press the green microphone button to talk to you, and scan the QR code that will appear shortly to bring you around the Science Centre on their mobile phones.",
           },
         ],
         max_tokens: 150,
