@@ -1,4 +1,4 @@
-import { censorBadWords, toIsoWithOffset } from "../util/common"
+import { toIsoWithOffset } from "../util/common"
 import { getNewSession } from "../api/api"
 import { geminiAPIKey } from "../apikey"
 
@@ -10,9 +10,8 @@ const DEFAULTS = {
   geminiModel: "gemini-2.0-flash",
   geminiMaxTokens: 350,
   geminiTemperature: 0.6,
-
   // ElevenLabs defaults
-  elevenModelId: "eleven_monolingual_v1",
+  elevenModelId: "eleven_flash_v2_5",
   elevenStability: 0.5,
   elevenSimilarityBoost: 0.75,
 }
@@ -51,6 +50,8 @@ export class SpeechEngine {
 
     // runtime state
     this.documentContent = ""
+    this._systemPrompt = "" // cached prompt to avoid rebuilding big strings per request
+
     this.recognition = null
     this.isListening = false
     this.isProcessing = false
@@ -62,6 +63,8 @@ export class SpeechEngine {
 
     this._currentAudio = null
     this._ttsLipInterval = null
+    //  abort controller for Gemini to avoid piling up requests
+    this._abortController = null
 
     // bind handlers
     this._handleRecognitionResult = this._handleRecognitionResult.bind(this)
@@ -74,6 +77,8 @@ export class SpeechEngine {
   // ---------------------------
   async init() {
     await this._loadDocumentContent()
+    // cache prompt once
+    this._systemPrompt = this._buildSystemPrompt()
     this._initSpeechRecognition()
     this._emitState()
     this._emitConversation()
@@ -142,7 +147,7 @@ export class SpeechEngine {
     this._emitState()
   }
 
-  //Allow text input in UI (same pipeline as speech)
+  // Allow text input in UI (same pipeline as speech)
   async sendText(text) {
     const msg = String(text || "").trim()
     if (!msg) return
@@ -155,37 +160,40 @@ export class SpeechEngine {
       return
     }
 
-    // Mark busy so UI mic shows spinner and user can “stop”
-    this.isProcessing = true
-    this._setVoiceStatus("Someone detected! Saying hello...")
-    this._emitState()
+    this._setState({
+      isProcessing: true,
+      voiceStatus: "Someone detected! Saying hello...",
+    })
 
     try {
       const greeting = await this._callOpenAIGreeting()
       const cleaned = this._sanitizeForSpeech(greeting)
-
-      this._setVoiceStatus("Speaking greeting...")
-      this._emitState()
-
+      this._setState({ voiceStatus: "Speaking greeting..." })
       await this._speakWithElevenLabs(cleaned)
-
-      this._setVoiceStatus("Ready to talk - Click microphone to speak")
-      this._emitState()
+      this._setState({
+        voiceStatus: "Ready to talk - Click microphone to speak",
+      })
     } catch (e) {
       console.error("Greeting failed:", e)
       this.onError(e)
-      this._setVoiceStatus("Ready to talk - Click microphone to speak")
-      this._emitState()
+      this._setState({
+        voiceStatus: "Ready to talk - Click microphone to speak",
+      })
     } finally {
-      this.isProcessing = false
-      this._emitState()
+      this._setState({ isProcessing: false })
     }
   }
 
   /**
-   * Stop TTS playback + stop recognition.
+   * Stop TTS playback + stop recognition + abort in-flight Gemini.
    */
   stop() {
+    // Abort in-flight LLM
+    try {
+      this._abortController?.abort?.()
+    } catch (e) {}
+    this._abortController = null
+
     // Stop recognition
     if (this.recognition && this.isListening) {
       try {
@@ -263,7 +271,6 @@ export class SpeechEngine {
   }
 
   _handleRecognitionEnd() {
-    // If it ends naturally (no result), keep ready state (unless processing)
     this.isListening = false
     if (!this.isProcessing) {
       this._setVoiceStatus("Ready to talk - Click microphone to speak")
@@ -282,41 +289,44 @@ export class SpeechEngine {
       console.log("Already processing, ignoring new input")
       return
     }
+    // Abort any in-flight request (prevents queueing + stale updates)
+    try {
+      this._abortController?.abort?.()
+    } catch (e) {}
+    this._abortController = new AbortController()
 
-    this.isProcessing = true
-    this._emitState()
+    //single batched state emit (instead of multiple back-to-back)
+    this._setState({ isProcessing: true, voiceStatus: "Thinking..." })
 
     try {
-      this._setVoiceStatus("Thinking...")
-      this._emitState()
-
       this._addToConversationHistory("user", transcript)
 
-      const aiResponse = await this._callGemini()
+      const aiResponse = await this._callGemini({
+        signal: this._abortController.signal,
+      })
+
+      this._addToConversationHistory("assistant", aiResponse)
+      this._setState({ voiceStatus: "Speaking..." })
 
       const cleaned = this._sanitizeForSpeech(aiResponse)
-      this._addToConversationHistory("assistant", aiResponse)
-
-      this._setVoiceStatus("Speaking...")
-      this._emitState()
-
       await this._speakWithElevenLabs(cleaned)
 
-      this._setVoiceStatus("Ready to talk - Click microphone to speak")
+      this._setState({
+        voiceStatus: "Ready to talk - Click microphone to speak",
+      })
     } catch (error) {
+      if (error?.name === "AbortError") return
       console.error("❌ Error processing speech:", error)
       this.onError(error)
-
-      this._setVoiceStatus("Error occurred - Click microphone to try again")
-      this._emitState()
-
+      this._setState({
+        voiceStatus: "Error occurred - Click microphone to try again",
+      })
       // fallback
       await this._speakFallback(
         "I'm having technical difficulties. Could you please try again?"
       )
     } finally {
-      this.isProcessing = false
-      this._emitState()
+      this._setState({ isProcessing: false })
     }
   }
 
@@ -342,7 +352,6 @@ export class SpeechEngine {
 
     // Limit history (keep similar behavior)
     if (this.conversationHistory.length > this.cfg.maxHistoryLength + 1) {
-      // match your original behavior (remove some older msgs)
       this.conversationHistory.splice(1, 2)
     }
 
@@ -373,14 +382,10 @@ export class SpeechEngine {
   }
 
   _emitConversation() {
-    //only shows last 3
+    // only shows last 3 (do nt censor here..)
     const visible = this.conversationHistory
       .filter((m) => m.role !== "system")
       .slice(-3)
-      .map((m) => ({
-        ...m,
-        content: censorBadWords(m.content),
-      }))
 
     this.onConversation({
       visible,
@@ -392,8 +397,9 @@ export class SpeechEngine {
   // ---------------------------
   // Gemini
   // ---------------------------
-  async _callGemini() {
-    const systemPrompt = this._buildSystemPrompt()
+  async _callGemini({ signal } = {}) {
+    // Use cached prompt if available (big string)
+    const systemPrompt = this._systemPrompt || this._buildSystemPrompt()
 
     const contents = this.conversationHistory
       .filter((msg) => msg.role !== "system")
@@ -407,6 +413,7 @@ export class SpeechEngine {
 
     const resp = await fetch(url, {
       method: "POST",
+      signal,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents,
@@ -562,8 +569,7 @@ IMPORTANT: Base your answers on the reference knowledge provided above.`
     const audioUrl = URL.createObjectURL(audioBlob)
     const audio = new Audio(audioUrl)
     this._currentAudio = audio
-
-    // Start naive lips while speaking (you can replace with LipSyncTTS later)
+    // Start naive lips while speaking
     this._startLipsWhileSpeaking(audio)
 
     await audio.play()
@@ -598,8 +604,7 @@ IMPORTANT: Base your answers on the reference knowledge provided above.`
         this.hologram?.closeMouth?.()
         return
       }
-
-      // This matches your old “toggle jawOpen” approach
+      // keep old “toggle jawOpen” approach
       if (toggle) {
         this.hologram?.setViseme?.("viseme_aa", 1)
       } else {
@@ -667,6 +672,20 @@ IMPORTANT: Base your answers on the reference knowledge provided above.`
 
   _setVoiceStatus(message) {
     this.voiceStatus = message
+  }
+
+  // Batch updates and emit once
+  _setState(patch = {}) {
+    if (typeof patch.isListening === "boolean")
+      this.isListening = patch.isListening
+    if (typeof patch.isProcessing === "boolean")
+      this.isProcessing = patch.isProcessing
+    if (typeof patch.voiceStatus === "string")
+      this.voiceStatus = patch.voiceStatus
+    if (Object.prototype.hasOwnProperty.call(patch, "sessionId")) {
+      this.currentSession = patch.sessionId
+    }
+    this._emitState()
   }
 
   _emitState() {

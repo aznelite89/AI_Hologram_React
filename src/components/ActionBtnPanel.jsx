@@ -32,15 +32,6 @@ const ActionBtnPanel = () => {
     ]
   }, ArrayEqual)
 
-  const visible = useMemo(
-    () => conversationVisible?.toJS?.() ?? [],
-    [conversationVisible]
-  )
-  const full = useMemo(
-    () => conversationFull?.toJS?.() ?? [],
-    [conversationFull]
-  )
-
   const onReset = useCallback(() => {
     const engine = getSpeechEngine()
     engine?.stop?.()
@@ -95,8 +86,8 @@ const ActionBtnPanel = () => {
           )}
         </button>
         <ChatPanel
-          visible={visible}
-          full={full}
+          visible={conversationVisible}
+          full={conversationFull}
           voiceStatus={voiceStatus}
           isListening={isListening}
           isProcessing={isProcessing}

@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from "react"
 import { censorBadWords } from "../util/common"
+import { getLastNMessages } from "../util/speech"
 
 const ChatPanel = ({
   visible = [], // kept for API compatibility
@@ -26,11 +27,14 @@ const ChatPanel = ({
     setText(e.target.value)
   }, [])
 
-  const handleSend = useCallback(async () => {
+  const handleSend = useCallback(() => {
     const msg = text.trim()
     if (!msg || isProcessing) return
     setText("")
-    await onSendText?.(msg)
+    //let React commit/pain first, then start heavy async pipeline
+    requestAnimationFrame(() => {
+      onSendText?.(msg)
+    })
   }, [text, isProcessing, onSendText])
 
   const handleKeyDown = useCallback(
@@ -40,27 +44,36 @@ const ChatPanel = ({
     [handleSend]
   )
 
-  // - exclude system
-  // - show last 3 only
-  // Precompute display messages (avoids re-running censor on each render)
+  // oonly touch a small tail, filter out system, show last 3.
   const renderedMessages = useMemo(() => {
-    if (!full?.length) return []
+    // take a small tail so can filter "system" and still have last 3
+    const tail = getLastNMessages(full, 12)
 
-    return full
-      .filter((msg) => msg?.role !== "system")
-      .slice(-3)
-      .map((msg, idx) => {
-        const isUser = msg?.role === "user"
-        return {
-          key: msg?.id ?? `${msg?.role ?? "msg"}-${idx}`,
-          className: isUser ? "chat-bubble user" : "chat-bubble assistant",
-          content: censorBadWords(msg?.content ?? ""),
-        }
-      })
+    const filtered = []
+    for (let i = 0; i < tail.length; i++) {
+      const msg = tail[i]
+      if (!msg || msg.get("role") === "system") continue
+      filtered.push(msg)
+    }
+
+    const last3 = filtered.slice(-3)
+
+    return last3.map((msg, idx) => {
+      const isUser = msg?.get("role") === "user"
+      return {
+        key:
+          msg?.get("id") ??
+          `${msg?.get("role") ?? "msg"}-${idx}-${msg?.get("timestamp") ?? ""}`,
+        className: isUser ? "chat-bubble user" : "chat-bubble assistant",
+        // Censor once here. do not censor on engine
+        content: censorBadWords(msg?.get("content") ?? ""),
+      }
+    })
   }, [full])
 
-  //auto-scroll behavior
+  // Auto-scroll only when panel is open
   useEffect(() => {
+    if (!isConversationOpen) return
     historyEndRef.current?.scrollIntoView({ behavior: "auto" })
   }, [renderedMessages.length, isConversationOpen])
 
