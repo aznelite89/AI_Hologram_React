@@ -61,3 +61,18 @@ export function censorBadWords(text = "") {
 export function ArrayEqual(left, right) {
   return is(fromJS(left), fromJS(right))
 }
+export const shallowEqualObj = (a, b) => {
+  if (a === b) return true
+  if (!a || !b) return false
+  const ak = Object.keys(a)
+  const bk = Object.keys(b)
+  if (ak.length !== bk.length) return false
+  for (let i = 0; i < ak.length; i++) {
+    const k = ak[i]
+    if (a[k] !== b[k]) return false
+  }
+  return true
+}
+
+export const now = () =>
+  typeof performance !== "undefined" ? performance.now() : Date.now()
