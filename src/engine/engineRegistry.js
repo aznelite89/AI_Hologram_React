@@ -1,9 +1,21 @@
-let _speechEngine = null
+let speechEngine = null
+let cameraEngine = null
+let hologramEngine = null
 
-export function setSpeechEngine(engine) {
-  _speechEngine = engine
+// -------- Speech --------
+export const setSpeechEngine = (e) => {
+  speechEngine = e
 }
+export const getSpeechEngine = () => speechEngine
 
-export function getSpeechEngine() {
-  return _speechEngine
+// -------- Camera --------
+export const setCameraEngine = (e) => {
+  cameraEngine = e
 }
+export const getCameraEngine = () => cameraEngine
+
+// -------- Hologram --------
+export const setHologramEngine = (e) => {
+  hologramEngine = e
+}
+export const getHologramEngine = () => hologramEngine

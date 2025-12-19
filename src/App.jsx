@@ -5,7 +5,11 @@ import TopPanel from "./components/TopPanel/index.jsx"
 import { HologramEngine } from "./engine/HologramEngine.js"
 import { SpeechEngine } from "./engine/SpeechEngine.js"
 import { setSpeechState, setConversation } from "./slices/speechSlice"
-import { setSpeechEngine } from "./engine/engineRegistry"
+import {
+  setCameraEngine,
+  setHologramEngine,
+  setSpeechEngine,
+} from "./engine/engineRegistry"
 import { CameraEngine } from "./engine/CameraEngine"
 import KioskGuard from "./kiosk/KioskGuard.js"
 import KioskWatchdog from "./kiosk/KioskWatchdog.js"
@@ -39,7 +43,7 @@ export default function App() {
       showStats: true,
     })
     hologramRef.current = hologram
-
+    setHologramEngine(hologram)
     // -----------------------
     // Throttled Redux flushing
     // -----------------------
@@ -142,6 +146,7 @@ export default function App() {
         })
 
         cameraRef.current = camera
+        setCameraEngine(camera)
         await camera.init({ videoEl })
         if (cancelled) return
         camera.start()
@@ -153,7 +158,8 @@ export default function App() {
     return () => {
       cancelled = true
       setSpeechEngine(null)
-
+      setCameraEngine(null)
+      setHologramEngine(null)
       if (flushTimerRef.current) {
         clearTimeout(flushTimerRef.current)
         flushTimerRef.current = null
