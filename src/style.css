@@ -796,3 +796,80 @@ body {
 .kiosk-hide-cursor * {
   cursor: none !important;
 }
+/* refactor*/
+/* Input controls (replaces inline styles) */
+#voice-input-controls.voice-input-controls {
+  display: flex;
+  gap: 10px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid #ddd;
+  align-items: center;
+}
+
+#voice-text-input.voice-text-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+#voice-send-btn.voice-send-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: none;
+  background: #4caf50;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#voice-mic-btn.voice-mic-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Dim buttons while processing */
+#voice-send-btn.voice-send-btn:disabled,
+#voice-mic-btn.voice-mic-btn[aria-disabled="true"],
+#voice-mic-btn.voice-mic-btn[data-disabled="1"],
+#voice-send-btn.voice-send-btn[data-disabled="1"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Conversation bubbles */
+.chat-bubble {
+  margin: 5px 0;
+  padding: 8px 12px;
+  border-radius: 5px;
+  max-width: 95%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-bubble.user {
+  background: transparent;
+  color: white;
+  margin-left: auto;
+  text-align: right;
+}
+
+.chat-bubble.assistant {
+  background: #ffffff40;
+  color: #ffe457;
+  margin-right: auto;
+  text-align: left;
+}

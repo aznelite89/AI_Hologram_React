@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useCallback, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import ChatPanel from "./ChatPanel"
 import {
@@ -6,39 +6,64 @@ import {
   toggleConversationOpen,
 } from "../slices/speechSlice"
 import { getSpeechEngine } from "../engine/engineRegistry"
+import { ArrayEqual } from "../util/common"
 
 const ActionBtnPanel = () => {
   const dispatch = useDispatch()
-  const speech = useSelector((state) => state.speech)
+  const {
+    isListening,
+    isProcessing,
+    voiceStatus,
+    isConversationOpen,
+    conversationVisible,
+    conversationFull,
+  } = useSelector(
+    (state) => ({
+      isListening: state.speech.get("isListening"),
+      isProcessing: state.speech.get("isProcessing"),
+      voiceStatus: state.speech.get("voiceStatus"),
+      isConversationOpen: state.speech.get("isConversationOpen"),
+      conversationVisible: state.speech.get("conversationVisible"),
+      conversationFull: state.speech.get("conversationFull"),
+    }),
+    ArrayEqual
+  )
 
-  const isListening = speech.get("isListening")
-  const isProcessing = speech.get("isProcessing")
-  const voiceStatus = speech.get("voiceStatus")
-  const isConversationOpen = speech.get("isConversationOpen")
+  const visible = useMemo(
+    () => conversationVisible?.toJS?.() ?? [],
+    [conversationVisible]
+  )
+  const full = useMemo(
+    () => conversationFull?.toJS?.() ?? [],
+    [conversationFull]
+  )
 
-  const visible = speech.get("conversationVisible")?.toJS?.() ?? []
-  const full = speech.get("conversationFull")?.toJS?.() ?? []
-
-  const onReset = () => {
+  const onReset = useCallback(() => {
     const engine = getSpeechEngine()
     engine?.stop?.()
     engine?.resetConversation?.()
     dispatch(resetConversation())
-  }
+  }, [dispatch])
 
-  const onMic = () => {
+  const onMic = useCallback(() => {
     const engine = getSpeechEngine()
     engine?.toggleListening?.()
-  }
+  }, [])
 
-  const onToggleConversation = () => {
+  const onToggleConversation = useCallback(() => {
     dispatch(toggleConversationOpen())
-  }
+  }, [dispatch])
 
-  const onSendText = async (msg) => {
+  const onSendText = useCallback(async (msg) => {
     const engine = getSpeechEngine()
     await engine?.sendText?.(msg)
-  }
+  }, [])
+
+  const micClassName = useMemo(() => {
+    if (isProcessing) return "processing"
+    if (isListening) return "listening"
+    return ""
+  }, [isProcessing, isListening])
 
   return (
     <div id="action-buttons-container">
@@ -52,11 +77,7 @@ const ActionBtnPanel = () => {
         </svg>
       </button>
       <div className="button-instruction">Tap Microphone to Talk</div>
-      <button
-        id="btn-main-microphone"
-        className={isProcessing ? "processing" : isListening ? "listening" : ""}
-        onClick={onMic}
-      >
+      <button id="btn-main-microphone" className={micClassName} onClick={onMic}>
         {isProcessing ? (
           <i className="fas fa-spinner fa-spin"></i>
         ) : isListening ? (

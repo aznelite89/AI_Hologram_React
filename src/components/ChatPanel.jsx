@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react"
+import React, { memo, useCallback, useMemo, useState } from "react"
 import { censorBadWords } from "../util/common"
 
 const ChatPanel = ({
-  visible = [],
+  visible = [], // kept for API compatibility; not used here.. might be need to remove in futuree
   full = [],
   voiceStatus = "",
   isListening,
@@ -14,69 +14,36 @@ const ChatPanel = ({
 }) => {
   const [text, setText] = useState("")
 
-  const inputControlsStyle = useMemo(
-    () => ({
-      display: "flex",
-      gap: "10px",
-      padding: "15px",
-      background: "rgba(255, 255, 255, 0.95)",
-      borderBottom: "1px solid #ddd",
-      alignItems: "center",
-    }),
-    []
-  )
+  const handleChange = useCallback((e) => {
+    setText(e.target.value)
+  }, [])
 
-  const textInputStyle = useMemo(
-    () => ({
-      flex: 1,
-      padding: "10px",
-      border: "1px solid #ccc",
-      borderRadius: "5px",
-      fontSize: "14px",
-    }),
-    []
-  )
-
-  const sendButtonStyle = useMemo(
-    () => ({
-      width: "45px",
-      height: "45px",
-      borderRadius: "50%",
-      border: "none",
-      background: "#4CAF50",
-      color: "white",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-      opacity: isProcessing ? 0.6 : 1,
-    }),
-    [isProcessing]
-  )
-
-  const micButtonStyle = useMemo(
-    () => ({
-      width: "45px",
-      height: "45px",
-      borderRadius: "50%",
-      border: "none",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-      opacity: isProcessing ? 0.6 : 1,
-    }),
-    [isProcessing]
-  )
-
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     const msg = text.trim()
     if (!msg || isProcessing) return
     setText("")
     await onSendText?.(msg)
-  }
+  }, [text, isProcessing, onSendText])
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Enter") handleSend()
+    },
+    [handleSend]
+  )
+
+  // Precompute display messages (avoids re-running censor on each render)
+  const renderedMessages = useMemo(() => {
+    if (!full?.length) return []
+    return full.map((msg, idx) => {
+      const isUser = msg?.role === "user"
+      return {
+        key: msg?.id ?? `${msg?.role ?? "msg"}-${idx}`,
+        className: isUser ? "chat-bubble user" : "chat-bubble assistant",
+        content: censorBadWords(msg?.content ?? ""),
+      }
+    })
+  }, [full])
 
   return (
     <div id="conversation-container">
@@ -106,27 +73,25 @@ const ChatPanel = ({
         id="conversation-history-container"
         className={isConversationOpen ? "open" : "closed"}
       >
-        {/* ✅ Legacy voice-input-controls */}
-        <div id="voice-input-controls" style={inputControlsStyle}>
+        <div id="voice-input-controls" className="voice-input-controls">
           <input
             id="voice-text-input"
+            className="voice-text-input"
             type="text"
             placeholder="Type your message..."
             value={text}
             disabled={isProcessing}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSend()
-            }}
-            style={textInputStyle}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
           />
 
           <button
             type="button"
             id="voice-send-btn"
+            className="voice-send-btn"
             onClick={handleSend}
             disabled={isProcessing}
-            style={sendButtonStyle}
+            data-disabled={isProcessing ? "1" : "0"}
           >
             <i className="fas fa-paper-plane"></i>
           </button>
@@ -134,8 +99,10 @@ const ChatPanel = ({
           <button
             type="button"
             id="voice-mic-btn"
+            className="voice-mic-btn"
             onClick={onPushToTalk}
-            style={micButtonStyle}
+            aria-disabled={isProcessing}
+            data-disabled={isProcessing ? "1" : "0"}
           >
             {isProcessing ? (
               <i className="fas fa-spinner fa-spin"></i>
@@ -148,30 +115,13 @@ const ChatPanel = ({
         </div>
 
         <div id="conversation-history">
-          {full.length === 0
+          {renderedMessages.length === 0
             ? "No Conversation History"
-            : full.map((msg, idx) => {
-                const isUser = msg.role === "user"
-                const bubbleStyle = {
-                  margin: "5px 0",
-                  padding: "8px 12px",
-                  borderRadius: "5px",
-                  background: isUser ? "transparent" : "#FFFFFF40",
-                  color: isUser ? "white" : "#FFE457",
-                  marginLeft: isUser ? "auto" : undefined,
-                  marginRight: !isUser ? "auto" : undefined,
-                  textAlign: isUser ? "right" : "left",
-                  maxWidth: "95%",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }
-
-                return (
-                  <div key={idx} style={bubbleStyle}>
-                    {censorBadWords(msg.content)}
-                  </div>
-                )
-              })}
+            : renderedMessages.map((m) => (
+                <div key={m.key} className={m.className}>
+                  {m.content}
+                </div>
+              ))}
         </div>
 
         <div id="conversation-toolbar">
@@ -190,4 +140,4 @@ const ChatPanel = ({
   )
 }
 
-export default ChatPanel
+export default memo(ChatPanel)

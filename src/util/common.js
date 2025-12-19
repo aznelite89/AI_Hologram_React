@@ -1,4 +1,5 @@
 import { BAD_WORDS } from "../constants/BadWord.js"
+import { fromJS, is } from "immutable"
 
 export function isMobileEnv() {
   const toMatch = [
@@ -56,4 +57,7 @@ export function censorBadWords(text = "") {
   })
 
   return result
+}
+export function ArrayEqual(left, right) {
+  return is(fromJS(left), fromJS(right))
 }
