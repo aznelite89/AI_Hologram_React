@@ -6,20 +6,15 @@ import {
   submitFeedbackFailure,
 } from "../slices/feedbackSlice"
 
-// example selector (same pattern as your app)
-const selectSessionId = (state) => state.speech?.get("sessionId")
-
 async function postFeedback(payload) {
-  // Replace with real API / Firestore
+  // TODO: Replace with real API / Firestore sooon..
   // await fetch("/api/feedback", { method: "POST", body: JSON.stringify(payload) })
   return true
 }
 
 function* handleSubmitFeedback(action) {
   try {
-    console.log("select session id: ", selectSessionId)
-    const { rating, label, sessionId: sidFromAction } = action.payload || {}
-    const sessionId = sidFromAction || (yield select(selectSessionId))
+    const { rating, label, sessionId } = action.payload || {}
 
     const payload = {
       sessionId,
