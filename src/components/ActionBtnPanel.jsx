@@ -8,6 +8,7 @@ import {
 import { getSpeechEngine } from "../engine/engineRegistry"
 import { ArrayEqual } from "../util/common"
 import QrButton from "./QrButton"
+import FeedbackPanel from "./feedbackPanel"
 
 const ActionBtnPanel = () => {
   const dispatch = useDispatch()
@@ -99,6 +100,7 @@ const ActionBtnPanel = () => {
       </div>
       <div id="feedback-container">
         <QrButton session={sessionId} />
+        <FeedbackPanel sessionId={sessionId} />
       </div>
     </>
   )
