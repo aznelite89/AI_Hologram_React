@@ -22,12 +22,11 @@ async function postFeedback(payload) {
 
 function* handleSubmitFeedback(action) {
   try {
-    const { rating, label, sessionId } = action.payload || {}
+    const { rating, sessionId } = action.payload || {}
 
     const payload = {
       sessionId,
       rating,
-      label,
       source: "kiosk",
       ts: new Date().toISOString(),
     }
