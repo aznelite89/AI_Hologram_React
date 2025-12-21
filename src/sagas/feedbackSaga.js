@@ -4,12 +4,20 @@ import {
   submitFeedbackStart,
   submitFeedbackSuccess,
   submitFeedbackFailure,
-} from "../slices/feedbackSlice"
+} from "@nrs/slices/feedbackSlice"
+import { addFeedback } from "@nrs/api/api"
 
 async function postFeedback(payload) {
-  // TODO: Replace with real API / Firestore sooon..
-  // await fetch("/api/feedback", { method: "POST", body: JSON.stringify(payload) })
-  return true
+  try {
+    const data = await addFeedback(payload)
+    if (!data?.error) {
+      console.log("added feedback successfully.")
+    } else if (data?.error) {
+      console.log("Failed to add session:", data.error)
+    }
+  } catch (e) {
+    console.log("Error upon add session:", e)
+  }
 }
 
 function* handleSubmitFeedback(action) {
