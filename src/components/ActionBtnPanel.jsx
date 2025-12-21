@@ -8,7 +8,7 @@ import {
 import { getSpeechEngine } from "../engine/engineRegistry"
 import { ArrayEqual } from "../util/common"
 import QrButton from "./QrButton"
-import FeedbackPanel from "./feedbackPanel"
+import FeedbackPanel from "./FeedbackPanel"
 
 const ActionBtnPanel = () => {
   const dispatch = useDispatch()
