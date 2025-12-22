@@ -105,7 +105,7 @@ const ChatPanel = ({
         id="conversation-history-container"
         className={
           isConversationOpen
-            ? isProcessing
+            ? voiceStatus == "Thinking..." || voiceStatus == "Listening..."
               ? "open processing"
               : "open"
             : "closed"
