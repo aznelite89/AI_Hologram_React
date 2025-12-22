@@ -103,7 +103,13 @@ const ChatPanel = ({
 
       <div
         id="conversation-history-container"
-        className={isConversationOpen ? "open" : "closed"}
+        className={
+          isConversationOpen
+            ? isProcessing
+              ? "open processing"
+              : "open"
+            : "closed"
+        }
       >
         <div id="voice-input-controls" className="voice-input-controls">
           <input
