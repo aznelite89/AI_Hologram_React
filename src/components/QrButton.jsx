@@ -1,7 +1,12 @@
 import React, { memo, useMemo } from "react"
+import { useSelector } from "react-redux"
+import { ArrayEqual } from "../util/common"
 
 const QrButton = ({ session }) => {
   const baseUrl = import.meta.env.VITE_APP_BASE || ""
+  const [lastFeedback] = useSelector((state) => {
+    return [state.feedback.get("lastSubmittedAt")]
+  }, ArrayEqual)
 
   const qrSrc = useMemo(() => {
     if (!baseUrl || !session) return ""
@@ -14,7 +19,11 @@ const QrButton = ({ session }) => {
   if (!session || !qrSrc) return null
 
   return (
-    <button id="qr-button" type="button">
+    <button
+      id="qr-button"
+      className={`${lastFeedback ? "ai-glow" : ""}`}
+      type="button"
+    >
       <img src={qrSrc} alt="QR code" />
       Scan to move to AI Guide App
     </button>

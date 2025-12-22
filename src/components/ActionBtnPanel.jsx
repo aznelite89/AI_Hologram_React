@@ -9,6 +9,7 @@ import { getSpeechEngine } from "../engine/engineRegistry"
 import { ArrayEqual } from "../util/common"
 import QrButton from "./QrButton"
 import FeedbackPanel from "./FeedbackPanel"
+import { resetFeedback } from "../slices/feedbackSlice"
 
 const ActionBtnPanel = () => {
   const dispatch = useDispatch()
@@ -38,6 +39,7 @@ const ActionBtnPanel = () => {
     engine?.stop?.()
     engine?.resetConversation?.()
     dispatch(resetConversation())
+    dispatch(resetFeedback())
   }, [dispatch])
 
   const onMic = useCallback(() => {
