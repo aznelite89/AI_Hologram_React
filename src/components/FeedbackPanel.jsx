@@ -82,7 +82,7 @@ const FeedbackPanel = ({ sessionId }) => {
 
   if (phase === "thankyou" && selectedCfg) {
     return (
-      <div className="thank-you-container">
+      <div className="thank-you-container rating-chest-mock">
         <h1 className="title">Thank you so much!</h1>
 
         <div className="celebration-area">
@@ -106,7 +106,8 @@ const FeedbackPanel = ({ sessionId }) => {
         />
 
         <p className="message">
-          You are about to embark on an amazing journey!
+          Thank you for rating the AI Hologram. Scan the QR Code to continue the
+          experience
         </p>
 
         {isSubmitting && (

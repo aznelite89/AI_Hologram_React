@@ -368,6 +368,62 @@ button:focus-visible {
   width: 100%;
 }
 
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+#qr-button {
+  position: relative;
+  isolation: isolate; /* important: keeps pseudo layers behind content cleanly */
+  z-index: 0;
+}
+
+#qr-button::before,
+#qr-button::after {
+  content: none;
+}
+
+#qr-button.ai-glow {
+  background: #0b0f1a;
+}
+
+#qr-button.ai-glow::before,
+#qr-button.ai-glow::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  z-index: -1;
+  background-image: conic-gradient(
+    from var(--angle),
+    #ff4545,
+    #00ff99,
+    #006aff,
+    #ff0095,
+    #ff4545
+  );
+  animation: ai-border-spin 3s linear infinite;
+  animation-duration: 5s;
+}
+
+#qr-button.ai-glow::before {
+  filter: blur(18px);
+  opacity: 0.75;
+}
+
+#qr-button.ai-glow::after {
+  filter: none;
+}
+
+/* 4) Animate the CSS variable */
+@keyframes ai-border-spin {
+  to {
+    --angle: 360deg;
+  }
+}
+
 modal-hidden {
   display: none;
 }
@@ -455,13 +511,14 @@ modal-hidden {
   );
 }
 
-.rating-container.rating-chest-mock {
-  position: fixed;
+/* shared chest positioning for both rating + thank-you */
+.rating-chest-mock {
+  position: fixed !important;
   z-index: 9999;
-  /* tune these 2 values to match witch cesht positiojn */
   left: 48.5vw;
   top: 0vh;
   transform: translate(-50%, -50%);
+  margin-top: 0 !important;
   pointer-events: auto;
   will-change: transform;
 }
@@ -705,28 +762,6 @@ modal-hidden {
   color: #ffd700;
 }
 
-/* @media (max-width: 768px) {
-  .thank-you-container {
-      padding: 40px 20px;
-  }
-  
-  .title {
-      font-size: 2rem;
-  }
-  
-  .message {
-      font-size: 1.4rem;
-  }
-  
-  .main-emoji {
-      width: 100px;
-      height: 100px;
-  }
-  
-  .celebration-area {
-      height: 160px;
-  }
-} */
 /*
  * 1. THE CONTAINER
  * This new element now handles all the positioning and alignment.
