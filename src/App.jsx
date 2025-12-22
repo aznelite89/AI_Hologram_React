@@ -190,7 +190,7 @@ export default function App() {
 
   return (
     <>
-      <KioskGuard enabled={false} />
+      <KioskGuard enabled={true} />
       <KioskWatchdog enabled={true} />
       <TopPanel />
       <div id="container"></div>
