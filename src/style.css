@@ -346,7 +346,7 @@ button:focus-visible {
   border-radius: 10px;
   cursor: pointer;
 }
-/* default look (your purple) */
+/* Base button (default purple) */
 #qr-button {
   display: flex;
   flex-direction: column;
@@ -377,7 +377,7 @@ button:focus-visible {
   display: block;
 }
 
-/* ---------- recording-style angle animation ---------- */
+/* Animated angle (recording style) */
 @property --angle {
   syntax: "<angle>";
   initial-value: 0deg;
@@ -396,19 +396,22 @@ button:focus-visible {
   content: none;
 }
 
-/* ✅ when glowing: black center */
+/* when glowing: black center */
 #qr-button.ai-glow {
   background: #0b0f1a;
 }
 
-/* ✅ when glowing: border ring + glow (masked so center stays black) */
-#qr-button.ai-glow::before,
-#qr-button.ai-glow::after {
+/* =========================
+   GLOW AURA (soft only)
+   IMPORTANT: NO MASK here
+   ========================= */
+#qr-button.ai-glow::before {
   content: "";
   position: absolute;
-  inset: -3px;
+  inset: -16px; /* bigger than ring so it blooms outside */
   border-radius: inherit;
-  z-index: -1;
+  z-index: -2;
+  pointer-events: none;
 
   background: conic-gradient(
     from var(--angle),
@@ -420,10 +423,38 @@ button:focus-visible {
   );
 
   animation: ai-border-spin 5s linear infinite;
-  animation-duration: 5s;
 
-  /* keep ONLY the border ring */
+  filter: blur(26px);
+  opacity: 0.75;
+
+  /* helps the halo spread more naturally */
+  transform: scale(1.05);
+}
+
+/* =========================
+   SHARP RING (ring only)
+   MASK stays ONLY here
+   ========================= */
+#qr-button.ai-glow::after {
+  content: "";
+  position: absolute;
+  inset: -4px; /* tight ring */
+  border-radius: inherit;
+  z-index: -1;
+  pointer-events: none;
+
+  background: conic-gradient(
+    from var(--angle),
+    #ff4545,
+    #00ff99,
+    #006aff,
+    #ff0095,
+    #ff4545
+  );
+
+  animation: ai-border-spin 5s linear infinite;
   padding: 3px;
+
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
