@@ -7,7 +7,7 @@ const DEFAULTS = {
   maxHistoryLength: 20,
   conversationTimeoutMs: 300000,
   chatCountThreshold: 3,
-  geminiModel: "gemini-2.0-flash",
+  geminiModel: "gemini-2.5-flash-lite",
   geminiMaxTokens: 350,
   geminiTemperature: 0.6,
   // ElevenLabs defaults
