@@ -441,7 +441,6 @@ modal-hidden {
 }
 
 .rating-container {
-  margin-top: 12px;
   border-radius: 24px;
   border: 2px solid #ffd700;
   padding: 20px 10px;
@@ -454,6 +453,17 @@ modal-hidden {
     rgba(120, 22, 233, 0.7) 31.23%,
     rgba(255, 255, 255, 0.21) 112.78%
   );
+}
+
+.rating-container.rating-chest-mock {
+  position: fixed;
+  z-index: 9999;
+  /* tune these 2 values to match witch cesht positiojn */
+  left: 48.5vw;
+  top: 0vh;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  will-change: transform;
 }
 
 .title {

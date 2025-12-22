@@ -127,7 +127,7 @@ const FeedbackPanel = ({ sessionId }) => {
   if (!sessionId) return null
 
   return (
-    <div className="rating-container">
+    <div className="rating-container rating-chest-mock">
       <h1 className="title">Rate your experience:</h1>
 
       <div className="rating-icons">
