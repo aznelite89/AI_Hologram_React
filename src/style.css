@@ -346,49 +346,62 @@ button:focus-visible {
   border-radius: 10px;
   cursor: pointer;
 }
-
+/* default look (your purple) */
 #qr-button {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   font-size: 20px;
-  background: linear-gradient(
-    347.47deg,
-    rgba(120, 22, 233, 0.7) 31.23%,
-    rgba(255, 255, 255, 0.21) 112.78%
-  );
   border: none;
   max-width: 200px;
   color: #ffe457;
   border-radius: 10px;
   cursor: pointer;
-}
-#qr-button > img {
-  width: 100%;
+
+  background: linear-gradient(
+    347.47deg,
+    rgba(120, 22, 233, 0.7) 31.23%,
+    rgba(255, 255, 255, 0.21) 112.78%
+  );
+
+  position: relative;
+  isolation: isolate;
+  z-index: 0;
+
+  padding: 14px;
 }
 
+#qr-button > img {
+  width: 100%;
+  display: block;
+}
+
+/* ---------- recording-style angle animation ---------- */
 @property --angle {
   syntax: "<angle>";
   initial-value: 0deg;
   inherits: false;
 }
 
-#qr-button {
-  position: relative;
-  isolation: isolate; /* important: keeps pseudo layers behind content cleanly */
-  z-index: 0;
+@keyframes ai-border-spin {
+  to {
+    --angle: 360deg;
+  }
 }
 
+/* default: no glow */
 #qr-button::before,
 #qr-button::after {
   content: none;
 }
 
+/* ✅ when glowing: black center */
 #qr-button.ai-glow {
   background: #0b0f1a;
 }
 
+/* ✅ when glowing: border ring + glow (masked so center stays black) */
 #qr-button.ai-glow::before,
 #qr-button.ai-glow::after {
   content: "";
@@ -396,7 +409,8 @@ button:focus-visible {
   inset: -3px;
   border-radius: inherit;
   z-index: -1;
-  background-image: conic-gradient(
+
+  background: conic-gradient(
     from var(--angle),
     #ff4545,
     #00ff99,
@@ -404,24 +418,16 @@ button:focus-visible {
     #ff0095,
     #ff4545
   );
-  animation: ai-border-spin 3s linear infinite;
+
+  animation: ai-border-spin 5s linear infinite;
   animation-duration: 5s;
-}
 
-#qr-button.ai-glow::before {
-  filter: blur(18px);
-  opacity: 0.75;
-}
-
-#qr-button.ai-glow::after {
-  filter: none;
-}
-
-/* 4) Animate the CSS variable */
-@keyframes ai-border-spin {
-  to {
-    --angle: 360deg;
-  }
+  /* keep ONLY the border ring */
+  padding: 3px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
 }
 
 modal-hidden {
