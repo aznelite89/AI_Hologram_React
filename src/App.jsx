@@ -14,6 +14,7 @@ import { CameraEngine } from "./engine/CameraEngine"
 import KioskGuard from "./kiosk/KioskGuard.js"
 import KioskWatchdog from "./kiosk/KioskWatchdog.js"
 import { now, shallowEqualObj } from "./util/common.js"
+import { useInactivityReset } from "./hooks/useInactivityReset.js"
 
 export default function App() {
   const dispatch = useDispatch()
@@ -99,7 +100,6 @@ export default function App() {
         // 2) init speech
         const speech = new SpeechEngine({
           hologram,
-
           // buffer + throttle; do NOT dispatch immediately
           onState: (s) => {
             if (cancelled) return
@@ -187,6 +187,18 @@ export default function App() {
     const t = setInterval(() => window.__KIOSK_PING__?.(), 20000)
     return () => clearInterval(t)
   }, [])
+
+  useInactivityReset({
+    enabled: true,
+    timeoutMs: 60000,
+    onTimeout: () => {
+      speechRef.current?.resetConversation?.()
+    },
+    isBlocked: () => {
+      const s = speechRef.current?.getState?.()
+      return !!(s?.isListening || s?.isProcessing || s?.isSpeaking)
+    },
+  })
 
   return (
     <>
