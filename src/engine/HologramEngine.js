@@ -12,11 +12,15 @@ class MorphTargetManager {
     this.blendshapeMeshes = []
     this.currentBlendshapes = {}
     this.targetBlendshapes = {}
-    this.isTalking = false
     this.availableBlendshapes = new Set()
 
-    // only update blendshapes that are "in motion"
     this.active = new Set()
+    //talking envelope for jawOpen (matches your plain JS open/close rhythm)
+    this.isTalking = false
+    this._talkPhase = 0
+    this._talkSpeed = 12.0 // higher = faster open/close (roughly like 150ms toggle)
+    this._jawMin = 0.25
+    this._jawMax = 0.55
 
     this.findBlendshapeMeshes()
     this.initializeBlendshapes()
@@ -52,10 +56,6 @@ class MorphTargetManager {
       console.log(
         `✅ Found ${this.blendshapeMeshes.length} meshes with blendshapes`
       )
-      // console.log(
-      //   "✅ Available blendshapes:",
-      //   Array.from(this.availableBlendshapes)
-      // )
     }
   }
 
@@ -68,127 +68,137 @@ class MorphTargetManager {
 
   setBlendshape(blendshapeName, value) {
     if (!this.availableBlendshapes.has(blendshapeName)) return
-
     const clamped = Math.max(0, Math.min(1, value))
     this.targetBlendshapes[blendshapeName] = clamped
-
-    // mark as active so update() processes it
     this.active.add(blendshapeName)
   }
 
-  closeMouth() {
-    this.isTalking = false
+  // reset mouth/jaw targets (and mark active so active-set lerps down)
+  _resetMouthJawTargets() {
     this.availableBlendshapes.forEach((name) => {
       const lower = name.toLowerCase()
       if (lower.includes("mouth") || lower.includes("jaw")) {
         this.targetBlendshapes[name] = 0
-        this.active.add(name) //  ensure it actually lerps down..
+        this.active.add(name)
       }
     })
+  }
+
+  closeMouth() {
+    this.isTalking = false
+    this._resetMouthJawTargets()
     this.setBlendshape("mouthClose", 0.2)
     this.setBlendshape("mouthSmileLeft", 0.15)
     this.setBlendshape("mouthSmileRight", 0.15)
   }
 
-  setVisemeInfluence(visemeName, influence) {
-    const lowerViseme = String(visemeName || "").toLowerCase()
+  // configure jaw envelope per viseme
+  _setTalkJawRange(min, max) {
+    this._jawMin = min
+    this._jawMax = max
+  }
 
-    // Reset mouth/jaw blendshapes
-    this.availableBlendshapes.forEach((name) => {
-      const lower = name.toLowerCase()
-      if (lower.includes("mouth") || lower.includes("jaw")) {
-        this.targetBlendshapes[name] = 0
-        this.active.add(name) //ensure reset is applied
-      }
-    })
+  setVisemeInfluence(visemeName, influence = 1) {
+    const v = String(visemeName || "").toLowerCase()
 
-    if (lowerViseme.includes("sil") || lowerViseme === "viseme_sil") {
+    // reset lip shapes each viseme, but DO NOT “hard set” jawOpen here anymore.
+    // Jaw is now driven by the talking envelope in update() for open/close rhythm.
+    this._resetMouthJawTargets()
+
+    if (v.includes("sil") || v === "viseme_sil") {
       this.isTalking = false
+      this._setTalkJawRange(0.0, 0.0)
       this.setBlendshape("mouthClose", 0.2)
       this.setBlendshape("mouthSmileLeft", 0.15)
       this.setBlendshape("mouthSmileRight", 0.15)
-    } else if (lowerViseme.includes("pp") || lowerViseme === "viseme_pp") {
-      this.isTalking = true
+      return
+    }
+
+    // default talking envelope (this is the “plain JS” feel)
+    this.isTalking = true
+    this._setTalkJawRange(0.3, 0.6)
+
+    // Now only set *lip shaping* per viseme:..
+    if (v.includes("pp") || v === "viseme_pp") {
+      // lips pressed (smaller jaw range)
+      this._setTalkJawRange(0.1, 0.25)
       this.setBlendshape("mouthClose", 1.0)
       this.setBlendshape("mouthPucker", 0.2)
-    } else if (lowerViseme.includes("ff") || lowerViseme === "viseme_ff") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.25)
+    } else if (v.includes("ff") || v === "viseme_ff") {
       this.setBlendshape("mouthFunnel", 0.3)
       this.setBlendshape("mouthRollLower", 0.2)
-    } else if (lowerViseme.includes("th") || lowerViseme === "viseme_th") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.35)
+    } else if (v.includes("th") || v === "viseme_th") {
       this.setBlendshape("mouthStretchLeft", 0.25)
       this.setBlendshape("mouthStretchRight", 0.25)
-    } else if (lowerViseme.includes("dd") || lowerViseme === "viseme_dd") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.4)
+    } else if (v.includes("dd") || v === "viseme_dd") {
       this.setBlendshape("mouthSmileLeft", 0.1)
       this.setBlendshape("mouthSmileRight", 0.1)
-    } else if (lowerViseme.includes("kk") || lowerViseme === "viseme_kk") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.5)
-    } else if (lowerViseme.includes("ch") || lowerViseme === "viseme_ch") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.4)
+    } else if (v.includes("kk") || v === "viseme_kk") {
+      this._setTalkJawRange(0.35, 0.65)
+    } else if (v.includes("ch") || v === "viseme_ch") {
       this.setBlendshape("mouthFunnel", 0.3)
       this.setBlendshape("mouthPucker", 0.2)
-    } else if (lowerViseme.includes("ss") || lowerViseme === "viseme_ss") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.2)
+    } else if (v.includes("ss") || v === "viseme_ss") {
+      this._setTalkJawRange(0.15, 0.35)
       this.setBlendshape("mouthSmileLeft", 0.4)
       this.setBlendshape("mouthSmileRight", 0.4)
       this.setBlendshape("mouthStretchLeft", 0.2)
       this.setBlendshape("mouthStretchRight", 0.2)
-    } else if (lowerViseme.includes("nn") || lowerViseme === "viseme_nn") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.35)
-    } else if (lowerViseme.includes("rr") || lowerViseme === "viseme_rr") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.45)
+    } else if (v.includes("nn") || v === "viseme_nn") {
+      this._setTalkJawRange(0.25, 0.5)
+    } else if (v.includes("rr") || v === "viseme_rr") {
       this.setBlendshape("mouthFunnel", 0.2)
-    } else if (lowerViseme.includes("aa") || lowerViseme === "viseme_aa") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.85)
+    } else if (v.includes("aa") || v === "viseme_aa") {
+      // allow bigger opens, but still rhythmic
+      this._setTalkJawRange(0.35, 0.75)
       this.setBlendshape("mouthLowerDownLeft", 0.2)
       this.setBlendshape("mouthLowerDownRight", 0.2)
-    } else if (lowerViseme.includes("e") || lowerViseme === "viseme_e") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.45)
+    } else if (
+      v === "viseme_e" ||
+      (v.includes("viseme_") && v.endsWith("_e")) ||
+      v === "e"
+    ) {
+      this._setTalkJawRange(0.25, 0.55)
       this.setBlendshape("mouthSmileLeft", 0.35)
       this.setBlendshape("mouthSmileRight", 0.35)
-    } else if (lowerViseme.includes("i") || lowerViseme === "viseme_i") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.25)
+    } else if (v.includes("viseme_i") || v.endsWith("_i")) {
+      this._setTalkJawRange(0.15, 0.35)
       this.setBlendshape("mouthSmileLeft", 0.7)
       this.setBlendshape("mouthSmileRight", 0.7)
       this.setBlendshape("mouthStretchLeft", 0.3)
       this.setBlendshape("mouthStretchRight", 0.3)
-    } else if (lowerViseme.includes("o") || lowerViseme === "viseme_o") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.55)
+    } else if (v.includes("viseme_o") || v.endsWith("_o")) {
+      this._setTalkJawRange(0.25, 0.6)
       this.setBlendshape("mouthFunnel", 0.5)
       this.setBlendshape("mouthPucker", 0.3)
-    } else if (lowerViseme.includes("u") || lowerViseme === "viseme_u") {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", 0.35)
+    } else if (v.includes("viseme_u") || v.endsWith("_u")) {
+      this._setTalkJawRange(0.2, 0.5)
       this.setBlendshape("mouthPucker", 0.75)
       this.setBlendshape("mouthFunnel", 0.5)
     } else {
-      this.isTalking = true
-      this.setBlendshape("jawOpen", influence * 0.6)
+      // generic talk
       this.setBlendshape("mouthSmileLeft", 0.2)
       this.setBlendshape("mouthSmileRight", 0.2)
+      // influence can gently scale jaw range
+      const s = Math.max(0.7, Math.min(1.0, influence))
+      this._setTalkJawRange(0.25 * s, 0.6 * s)
     }
   }
 
   update(delta) {
+    // jaw open/close envelope while talking
+    if (this.isTalking && this.availableBlendshapes.has("jawOpen")) {
+      this._talkPhase += delta * this._talkSpeed
+      // 0..1
+      const env = (Math.sin(this._talkPhase) + 1) * 0.5
+      const jaw = this._jawMin + (this._jawMax - this._jawMin) * env
+      this.setBlendshape("jawOpen", jaw)
+    }
+    // -------------------------------------------------------------
+
     const lerpFactor = 10 * delta
     const EPS = 0.001
 
-    // only process active blendshapes
-    // Copy to array because will delete from the Set while iterating
     const activeNow = Array.from(this.active)
     if (activeNow.length === 0) return
 
@@ -201,12 +211,9 @@ class MorphTargetManager {
 
       for (const { mesh, dictionary } of this.blendshapeMeshes) {
         const index = dictionary[blendshapeName]
-        if (index !== undefined) {
-          mesh.morphTargetInfluences[index] = next
-        }
+        if (index !== undefined) mesh.morphTargetInfluences[index] = next
       }
 
-      // stop updating once close enough
       if (Math.abs(next - tgt) < EPS) {
         this.currentBlendshapes[blendshapeName] = tgt
         this.active.delete(blendshapeName)
