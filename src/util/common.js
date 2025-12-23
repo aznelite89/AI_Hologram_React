@@ -39,21 +39,21 @@ export function toIsoWithOffset(epochMillis, offsetMinutes = 480) {
 
   return `${iso}${sign}${hours}:${mins}`
 }
-function buildLoosePattern(word) {
-  return word.split("").join("[^a-zA-Z]*")
+function escapeRegExp(s = "") {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
-
 export function censorBadWords(text = "") {
-  let result = text
+  let result = String(text)
 
   BAD_WORDS.forEach((word) => {
-    const loosePattern = buildLoosePattern(word)
-    const regex = new RegExp(loosePattern, "gi")
+    const w = escapeRegExp(String(word).trim())
+    if (!w) return
 
-    result = result.replace(regex, (match) => {
-      // Replace the entire detected segment with **** of proper length
-      return "*".repeat(word.length)
-    })
+    // Whole-word match: prevents censoring inside other words
+    // Example: "class" won't match "classification"
+    const regex = new RegExp(`\\b${w}\\b`, "gi")
+
+    result = result.replace(regex, (match) => "*".repeat(match.length))
   })
 
   return result
