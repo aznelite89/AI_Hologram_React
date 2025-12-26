@@ -8,6 +8,7 @@ import React, {
 } from "react"
 import { censorBadWords } from "../util/common"
 import { getLastNMessages } from "../util/speech"
+import OnScreenKeyboard from "./OnScreenKeyboard"
 
 const ChatPanel = ({
   visible = [], // kept for API compatibility
@@ -22,31 +23,41 @@ const ChatPanel = ({
 }) => {
   const [text, setText] = useState("")
   const historyEndRef = useRef(null)
+  const inputRef = useRef(null)
 
   const handleChange = useCallback((e) => {
     setText(e.target.value)
   }, [])
 
-  const handleSend = useCallback(() => {
-    const msg = text.trim()
-    if (!msg || isProcessing) return
-    setText("")
-    //let React commit/pain first, then start heavy async pipeline
-    requestAnimationFrame(() => {
-      onSendText?.(msg)
-    })
-  }, [text, isProcessing, onSendText])
+  const handleSend = useCallback(
+    (overrideMsg) => {
+      const msg = (overrideMsg ?? text).trim()
+      if (!msg || isProcessing) return
+
+      setText("")
+
+      // let React commit/paint first, then start heavy async pipeline
+      requestAnimationFrame(() => {
+        onSendText?.(msg)
+        // keep focus ready for next typing
+        inputRef.current?.focus?.()
+      })
+    },
+    [text, isProcessing, onSendText]
+  )
 
   const handleKeyDown = useCallback(
     (e) => {
-      if (e.key === "Enter") handleSend()
+      if (e.key === "Enter") {
+        e.preventDefault()
+        handleSend()
+      }
     },
     [handleSend]
   )
 
-  // oonly touch a small tail, filter out system, show last 3.
+  // filter out system, show last 3.
   const renderedMessages = useMemo(() => {
-    // take a small tail so can filter "system" and still have last 3
     const tail = getLastNMessages(full, 12)
 
     const filtered = []
@@ -65,7 +76,6 @@ const ChatPanel = ({
           msg?.get("id") ??
           `${msg?.get("role") ?? "msg"}-${idx}-${msg?.get("timestamp") ?? ""}`,
         className: isUser ? "chat-bubble user" : "chat-bubble assistant",
-        // Censor once here. do not censor on engine
         content: censorBadWords(msg?.get("content") ?? ""),
       }
     })
@@ -113,6 +123,7 @@ const ChatPanel = ({
       >
         <div id="voice-input-controls" className="voice-input-controls">
           <input
+            ref={inputRef}
             id="voice-text-input"
             className="voice-text-input"
             type="text"
@@ -121,13 +132,14 @@ const ChatPanel = ({
             disabled={isProcessing}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            readOnly
           />
 
           <button
             type="button"
             id="voice-send-btn"
             className="voice-send-btn"
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isProcessing}
             data-disabled={isProcessing ? "1" : "0"}
           >
@@ -175,6 +187,27 @@ const ChatPanel = ({
           </button>
         </div>
       </div>
+      {isConversationOpen && (
+        <OnScreenKeyboard
+          value={text}
+          onChange={(next) => {
+            if (isProcessing) return
+            setText(next)
+            requestAnimationFrame(() => {
+              const el = inputRef.current
+              if (!el) return
+              try {
+                const len = next.length
+                el.focus?.()
+                el.setSelectionRange(len, len)
+              } catch {}
+            })
+          }}
+          onEnter={(msg) => {
+            handleSend(msg)
+          }}
+        />
+      )}
     </div>
   )
 }

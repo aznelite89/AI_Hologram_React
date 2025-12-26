@@ -1,0 +1,73 @@
+/* Dock spans bottom but DOES NOT intercept touches outside the keyboard box */
+.kb-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+
+  display: flex;
+  justify-content: center;
+
+  pointer-events: none; /* pass-through touches */
+
+  padding: 0 10px calc(env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(constant(safe-area-inset-bottom));
+}
+
+/* Only this box is tappable */
+.kb-dockInner {
+  pointer-events: auto;
+
+  width: min(520px, 92vw); /* smaller for portrait */
+  background: rgba(18, 18, 18, 0.92);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -12px 26px rgba(0, 0, 0, 0.35);
+
+  padding: 8px 8px 10px;
+
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---- SimpleKeyboard overrides ---- */
+.kb-dockInner .simple-keyboard {
+  background: transparent;
+  padding: 0;
+}
+
+/* ✅ FIX #1: labels were “blank” because inherited text color = white on white */
+.kb-dockInner .simple-keyboard .hg-button {
+  background: rgba(255, 255, 255, 0.95); /* white key */
+  color: #111 !important; /* ✅ black text so labels show */
+  border-radius: 12px;
+
+  /* ✅ FIX #2: reduce size */
+  height: 44px; /* was 64px */
+  font-size: 16px; /* was 20px */
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* Some builds wrap labels in span; force it too */
+.kb-dockInner .simple-keyboard .hg-button span {
+  color: #111 !important;
+  font-weight: 700;
+}
+
+/* Slightly different look for special keys */
+.kb-dockInner .simple-keyboard .hg-button[data-skbtn="{enter}"],
+.kb-dockInner .simple-keyboard .hg-button[data-skbtn="{bksp}"],
+.kb-dockInner .simple-keyboard .hg-button[data-skbtn="{shift}"] {
+  background: rgba(230, 230, 230, 0.95);
+  font-size: 14px;
+}
+
+/* Spacebar a bit shorter so it doesn't dominate */
+.kb-dockInner .simple-keyboard .hg-button[data-skbtn="{space}"] {
+  height: 44px;
+}
+/* scale depending on kiosk screen size, replace the fixed heights with clamp() */
+.kb-dockInner .simple-keyboard .hg-button {
+  height: clamp(38px, 5.2vh, 46px);
+  font-size: clamp(14px, 1.8vh, 16px);
+}
