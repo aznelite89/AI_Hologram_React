@@ -132,7 +132,7 @@ const ChatPanel = ({
             disabled={isProcessing}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            readOnly
+            // readOnly
           />
 
           <button

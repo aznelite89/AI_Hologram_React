@@ -308,6 +308,33 @@ button:focus-visible {
   top: 50%;
   left: 20px;
   transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px; /* spacing between QR, Map, Feedback */
+}
+
+.action-btn {
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.kiosk-map-btn {
+  width: 110px; /* tweak 96–140 based on your screen */
+  height: 110px;
+}
+
+.kiosk-map-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /*#btn-get-ticket,*/

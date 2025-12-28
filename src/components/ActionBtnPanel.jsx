@@ -10,6 +10,7 @@ import { ArrayEqual } from "../util/common"
 import QrButton from "./QrButton"
 import FeedbackPanel from "./FeedbackPanel"
 import { resetFeedback } from "../slices/feedbackSlice"
+import MapButton from "./MapButton"
 
 const ActionBtnPanel = () => {
   const dispatch = useDispatch()
@@ -102,6 +103,7 @@ const ActionBtnPanel = () => {
       </div>
       <div id="feedback-container">
         <QrButton session={sessionId} />
+        <MapButton />
         <FeedbackPanel sessionId={sessionId} />
       </div>
     </>
