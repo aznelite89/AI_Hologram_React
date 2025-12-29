@@ -25,6 +25,21 @@ const MapOverlay = () => {
     })
   }, [mapView, spaces])
 
+  useEffect(() => {
+    if (!mapView) return
+    startCoordRef.current = {
+      __type: "coordinate",
+      latitude: 1.3330655323295095,
+      longitude: 103.73545120379882,
+      verticalOffset: 0,
+    }
+
+    mapView.Camera.animateTo(
+      { center: startCoordRef.current, zoomLevel: 19.5 },
+      { duration: 1000 }
+    )
+  }, [])
+
   useMapViewEvent(
     "click",
     async (event) => {
@@ -105,7 +120,7 @@ const MapOverlay = () => {
             targetCoord
           )
         }
-
+        console.log("targetCoord: ", targetCoord)
         if (!directions) {
           console.warn("No directions returned.")
           return
