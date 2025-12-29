@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import ActionBtnPanel from "./components/ActionBtnPanel.jsx"
 import TopPanel from "./components/TopPanel/index.jsx"
 import { HologramEngine } from "./engine/HologramEngine.js"
@@ -13,11 +13,16 @@ import {
 import { CameraEngine } from "./engine/CameraEngine"
 import KioskGuard from "./kiosk/KioskGuard.js"
 import KioskWatchdog from "./kiosk/KioskWatchdog.js"
-import { now, shallowEqualObj } from "./util/common.js"
+import { ArrayEqual, now, shallowEqualObj } from "./util/common.js"
 import { useInactivityReset } from "./hooks/useInactivityReset.js"
+import EnginePageTypeController from "./engine/EnginePageTypeController.js"
+import { Main } from "./constants/PageType.js"
 
 export default function App() {
   const dispatch = useDispatch()
+  const [pageType] = useSelector((state) => {
+    return [state.common.get("pageType")]
+  }, ArrayEqual)
 
   const hologramRef = useRef(null)
   const speechRef = useRef(null)
@@ -204,7 +209,8 @@ export default function App() {
     <>
       <KioskGuard enabled={true} />
       <KioskWatchdog enabled={true} />
-      <TopPanel />
+      <EnginePageTypeController />
+      {pageType == Main ? <TopPanel /> : null}
       <div id="container"></div>
       <ActionBtnPanel />
     </>
