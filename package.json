@@ -28,6 +28,7 @@
     "react-redux": "^9.2.0",
     "react-simple-keyboard": "^3.8.141",
     "redux-saga": "^1.4.2",
-    "three": "^0.179.1"
+    "three": "^0.179.1",
+    "@mappedin/react-sdk": "^6.2.0"
   }
 }

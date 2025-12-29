@@ -1,10 +1,7 @@
 import React, { useEffect, useMemo, useRef } from "react"
 import { useMap, Marker, useMapViewEvent } from "@mappedin/react-sdk"
 import { useSelector, useDispatch } from "react-redux"
-import { ArrayEqual } from "@nrs/utils/common"
-import { openPopUp } from "@nrs/slices/commonSlice"
-import { Error, Success } from "@nrs/constants/PopupType"
-import { setDestination } from "@nrs/slices/navigationSlice"
+import { ArrayEqual } from "../util/common"
 
 const MapOverlay = () => {
   const dispatch = useDispatch()
@@ -61,12 +58,6 @@ const MapOverlay = () => {
           }
 
           if (!directions) {
-            dispatch(
-              openPopUp({
-                popupType: Success,
-                message: "This space is not accessible..",
-              })
-            )
             console.warn("No directions returned.")
             return
           }
@@ -74,12 +65,6 @@ const MapOverlay = () => {
           mapView.Navigation.clear?.()
           mapView.Navigation.draw(directions)
         } catch (err) {
-          dispatch(
-            openPopUp({
-              popupType: Error,
-              message: "Error while getting directions..",
-            })
-          )
           console.error("Error while getting directions:", err)
         }
       }
@@ -103,13 +88,6 @@ const MapOverlay = () => {
       startCoordRef.current = candidate
       console.debug("Fixed start set at:", candidate)
     } else {
-      // dispatch(
-      //   openPopUp({
-      //     popupType: Success,
-      //     message:
-      //       "Unable to resolve your location. Please ensure you are at Science Center and try again",
-      //   })
-      // )
       console.warn("Could not resolve a fixed start coordinate.")
     }
   }, [exhibit, position])
@@ -197,12 +175,6 @@ const MapOverlay = () => {
         }
 
         if (!directions) {
-          dispatch(
-            openPopUp({
-              popupType: Success,
-              message: "This space is not accessible..",
-            })
-          )
           console.warn("No directions returned.")
           return
         }

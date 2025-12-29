@@ -1,7 +1,7 @@
 import React from "react"
 import { MapView, useMapData } from "@mappedin/react-sdk"
-import MapOverlay from "@nrs/components/MiddlePanel/navigation/MapOverlay"
-import FloorSwitcher from "@nrs/components/MiddlePanel/navigation/FloorSwitcher"
+import FloorSwitcher from "./FloorSwitcher"
+import "@nrs/css/map.css"
 
 const MappedinMap = () => {
   const { isLoading, error, mapData } = useMapData({
@@ -9,6 +9,8 @@ const MappedinMap = () => {
     secret: "mis_dylRwkoXQb3ocvaZURE20d0wQLJ6BgEINpYw9t9EQNy9a0b1054",
     mapId: "68edec68d24915000bbf8757",
   })
+
+  console.log("map Data: ", mapData)
 
   if (isLoading) return <div>Loading indoor map…</div>
   if (error) return <div>Failed to load map: {error.message}</div>
@@ -18,7 +20,7 @@ const MappedinMap = () => {
       <MapView mapData={mapData} style={{ height: "100%", width: "100%" }}>
         <div className="map-ui-layer">
           <FloorSwitcher />
-          <MapOverlay />
+          {/* <MapOverlay /> */}
         </div>
       </MapView>
     </div>

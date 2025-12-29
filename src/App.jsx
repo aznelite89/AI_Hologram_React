@@ -16,7 +16,8 @@ import KioskWatchdog from "./kiosk/KioskWatchdog.js"
 import { ArrayEqual, now, shallowEqualObj } from "./util/common.js"
 import { useInactivityReset } from "./hooks/useInactivityReset.js"
 import EnginePageTypeController from "./engine/EnginePageTypeController.js"
-import { Main } from "./constants/PageType.js"
+import { Main, Map } from "./constants/PageType.js"
+import MappedinMap from "./components/MappedinMap.jsx"
 
 export default function App() {
   const dispatch = useDispatch()
@@ -212,6 +213,7 @@ export default function App() {
       <EnginePageTypeController />
       {pageType == Main ? <TopPanel /> : null}
       <div id="container"></div>
+      {pageType == Map ? <MappedinMap /> : null}
       <ActionBtnPanel />
     </>
   )
