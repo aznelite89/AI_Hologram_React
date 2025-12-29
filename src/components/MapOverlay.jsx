@@ -31,6 +31,7 @@ const MapOverlay = () => {
       __type: "coordinate",
       latitude: 1.3330655323295095,
       longitude: 103.73545120379882,
+      floorId: "m_1eb00e35b7fea9c4",
       verticalOffset: 0,
     }
 
@@ -43,6 +44,7 @@ const MapOverlay = () => {
   useMapViewEvent(
     "click",
     async (event) => {
+      mapView.Navigation.clear?.()
       const clickedMarker = event?.markers?.[0]
       let poiName = ""
       let poiCoord = null
