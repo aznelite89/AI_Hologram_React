@@ -140,6 +140,22 @@ export class CameraEngine {
 
     this._emitState()
   }
+  // stop camera
+  stopStream() {
+    try {
+      this.stream?.getTracks()?.forEach((t) => t.stop())
+    } catch {}
+    this.stream = null
+    if (this.videoEl) this.videoEl.srcObject = null
+    this.isCameraReady = false
+    this._emitState()
+  }
+  // start camera
+  async startStream() {
+    if (!this.videoEl) return
+    if (this.stream) return
+    await this._startCamera()
+  }
 
   async _loadModel() {
     try {

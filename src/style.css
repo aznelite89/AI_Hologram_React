@@ -1087,3 +1087,7 @@ body {
   margin-right: auto;
   text-align: left;
 }
+
+.kiosk-map-mode #container {
+  display: none;
+}
