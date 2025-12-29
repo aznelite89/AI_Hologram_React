@@ -1,20 +1,9 @@
 import React, { useEffect, useMemo, useRef } from "react"
 import { useMap, Marker, useMapViewEvent } from "@mappedin/react-sdk"
-import { useSelector, useDispatch } from "react-redux"
-import { ArrayEqual } from "../util/common"
 
 const MapOverlay = () => {
-  const dispatch = useDispatch()
   const { mapData, mapView } = useMap()
   const startCoordRef = useRef(null)
-  const [exhibit, position, destination] = useSelector((state) => {
-    const navState = state.navigation
-    return [
-      state.detection.get("exhibit"),
-      navState.get("position"),
-      navState.get("destination"),
-    ]
-  }, ArrayEqual)
 
   const spaces = useMemo(() => {
     if (!mapData) return []
@@ -36,66 +25,9 @@ const MapOverlay = () => {
     })
   }, [mapView, spaces])
 
-  useEffect(() => {
-    if (!position) return
-
-    const run = async () => {
-      if (destination) {
-        const space = spaces.find((s) => s?.name?.includes(destination))
-        console.log("start position:", position)
-        console.log("dest position: ", space.center)
-        try {
-          let directions
-
-          try {
-            directions = await mapView.getDirections({
-              from: position,
-              to: space.center,
-            })
-          } catch {
-            // fallback signature
-            directions = await mapView.getDirections(position, space.center)
-          }
-
-          if (!directions) {
-            console.warn("No directions returned.")
-            return
-          }
-
-          mapView.Navigation.clear?.()
-          mapView.Navigation.draw(directions)
-        } catch (err) {
-          console.error("Error while getting directions:", err)
-        }
-      }
-    }
-    run()
-  }, [position])
-
-  useEffect(() => {
-    return () => {
-      dispatch(setDestination(null))
-    }
-  }, [])
-
-  useEffect(() => {
-    // console.debug("exhibit: ", exhibit)
-    // console.debug("position: ", position)
-    // TODO: change to exibhit hall mapping in future when full dataset trained.
-    const candidate = position
-    console.debug("CANDIDATE: ", candidate)
-    if (candidate) {
-      startCoordRef.current = candidate
-      console.debug("Fixed start set at:", candidate)
-    } else {
-      console.warn("Could not resolve a fixed start coordinate.")
-    }
-  }, [exhibit, position])
-
   useMapViewEvent(
     "click",
     async (event) => {
-      // dispatch(setDestination(null))
       const clickedMarker = event?.markers?.[0]
       let poiName = ""
       let poiCoord = null
