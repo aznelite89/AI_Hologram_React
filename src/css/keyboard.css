@@ -1,18 +1,18 @@
-/* Dock spans bottom but DOES NOT intercept touches outside the keyboard box */
 .kb-dock {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+
+  /* 👇 move keyboard upward into comfortable reach */
+  top: 62vh; /* ← adjust: 58–65vh works well */
+  transform: translateY(-50%); /* center the keyboard block */
+
   z-index: 9999;
 
   display: flex;
   justify-content: center;
 
-  pointer-events: none; /* pass-through touches */
-
-  padding: 0 10px calc(env(safe-area-inset-bottom, 0px));
-  padding-bottom: calc(constant(safe-area-inset-bottom));
+  pointer-events: none; /* pass-through touches outside keyboard */
 }
 
 /* Only this box is tappable */
