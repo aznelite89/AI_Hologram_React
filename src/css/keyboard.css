@@ -3,16 +3,15 @@
   left: 0;
   right: 0;
 
-  /* 👇 move keyboard upward into comfortable reach */
-  top: 62vh; /* ← adjust: 58–65vh works well */
-  transform: translateY(-50%); /* center the keyboard block */
+  top: 48vh;
+  transform: translateY(-50%);
 
   z-index: 9999;
 
   display: flex;
   justify-content: center;
 
-  pointer-events: none; /* pass-through touches outside keyboard */
+  pointer-events: none;
 }
 
 /* Only this box is tappable */
