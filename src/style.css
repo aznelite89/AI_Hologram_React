@@ -673,7 +673,7 @@ modal-hidden {
   z-index: 9999;
   left: 48.5vw;
   top: 0vh;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, calc(-50% - 30px)); /* move up 30px */
   margin-top: 0 !important;
   pointer-events: auto;
   will-change: transform;
