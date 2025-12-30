@@ -18,6 +18,7 @@ import { useInactivityReset } from "./hooks/useInactivityReset.js"
 import EnginePageTypeController from "./engine/EnginePageTypeController.js"
 import { Main, Map } from "./constants/PageType.js"
 import MappedinMap from "./components/MappedinMap.jsx"
+import { setPageType } from "./slices/commonSlice.js"
 
 export default function App() {
   const dispatch = useDispatch()
@@ -199,6 +200,7 @@ export default function App() {
     timeoutMs: 60000,
     onTimeout: () => {
       speechRef.current?.resetConversation?.()
+      if (pageType == Map) dispatch(setPageType({ pageType: Main }))
     },
     isBlocked: () => {
       const s = speechRef.current?.getState?.()
