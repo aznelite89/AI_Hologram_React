@@ -157,6 +157,25 @@ export class CameraEngine {
     await this._startCamera()
   }
 
+  setVideoEl(videoEl) {
+    if (!videoEl) return
+    this.videoEl = videoEl
+
+    if (this.stream) {
+      const v = this.videoEl
+      v.srcObject = this.stream
+      v.autoplay = true
+      v.muted = true
+      v.playsInline = true
+
+      v.play?.().catch(() => {})
+      if (!this.cfg.hideVideo) v.style.display = "block"
+
+      this.isCameraReady = true
+      this._emitState()
+    }
+  }
+
   async _loadModel() {
     try {
       this.model = await cocoSsd.load()

@@ -23,14 +23,16 @@ const EnginePageTypeController = () => {
       camera?.stop?.() // stop detection interval
       holo?.stop?.() // stop RAF render loop
       // stop camera stream
-      // camera?.stopStream?.()
+      camera?.stopStream?.()
       document.documentElement.classList.add("kiosk-map-mode")
     } else {
       document.documentElement.classList.remove("kiosk-map-mode")
+      const videoEl = document.getElementById("webcam-feed")
+      camera?.setVideoEl?.(videoEl)
       // Resume render
       holo?.start?.()
       // stopped camera stream, start it again
-      // camera?.startStream?.().then(() => camera?.start?.())
+      camera?.startStream?.().then(() => camera?.start?.())
       // resume detection
       camera?.start?.()
     }
