@@ -208,7 +208,7 @@ export default function App() {
 
   return (
     <>
-      <KioskGuard enabled={true} />
+      <KioskGuard enabled={true} allowWheelInMap={pageType === Map} />
       <KioskWatchdog enabled={true} />
       <EnginePageTypeController />
       {pageType == Main ? <TopPanel /> : null}

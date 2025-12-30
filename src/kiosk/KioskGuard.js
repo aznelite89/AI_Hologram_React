@@ -1,6 +1,5 @@
 import { useEffect } from "react"
 
-// may add more keys for Science center kiosk if wanna block
 const BLOCK_KEYS = new Set([
   "Escape",
   "F1",
@@ -15,49 +14,106 @@ const BLOCK_KEYS = new Set([
   "F10",
   "F11",
   "F12",
+  "+",
+  "=",
+  "-",
+  "_",
+  "0",
 ])
 
-export default function KioskGuard({ enabled = true }) {
+export default function KioskGuard({ enabled = true, allowWheelInMap = true }) {
   useEffect(() => {
     if (!enabled) return
+
+    const isInMap = (target) => {
+      const mapEl = document.getElementById("map")
+      return !!(mapEl && target && mapEl.contains(target))
+    }
 
     const onContextMenu = (e) => e.preventDefault()
 
     const onKeyDown = (e) => {
-      // Block all those Alt/Ctrl/Meta combos commonly used to escape / devtools / refresh..
-      if (e.altKey || e.ctrlKey || e.metaKey) {
+      // Block browser zoom shortcuts and escape combos
+      const key = e.key
+      const zoomCombo =
+        (e.ctrlKey || e.metaKey) &&
+        (key === "+" || key === "=" || key === "-" || key === "0")
+
+      if (
+        zoomCombo ||
+        e.altKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        BLOCK_KEYS.has(key)
+      ) {
         e.preventDefault()
         e.stopPropagation()
-        return
-      }
-      if (BLOCK_KEYS.has(e.key)) {
-        e.preventDefault()
-        e.stopPropagation()
-        return
       }
     }
 
-    const onDragStart = (e) => e.preventDefault()
-
     const onWheel = (e) => {
-      // block Ctrl+wheel zoom
-      if (e.ctrlKey) e.preventDefault()
+      // If in map mode and wheel inside map, allow it (so map can zoom)
+      if (allowWheelInMap && isInMap(e.target)) return
+
+      // Otherwise block wheel to prevent any zoom/scroll affecting hologram/page
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    // iOS Safari pinch gesture events (some browsers)
+    const onGesture = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    // Also block double-tap zoom (some browsers)
+    let lastTouchEnd = 0
+    const onTouchEnd = (e) => {
+      const now = Date.now()
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault()
+      }
+      lastTouchEnd = now
     }
 
     document.addEventListener("contextmenu", onContextMenu, { capture: true })
     window.addEventListener("keydown", onKeyDown, { capture: true })
-    document.addEventListener("dragstart", onDragStart, { capture: true })
     window.addEventListener("wheel", onWheel, { passive: false, capture: true })
+
+    document.addEventListener("gesturestart", onGesture, {
+      passive: false,
+      capture: true,
+    })
+    document.addEventListener("gesturechange", onGesture, {
+      passive: false,
+      capture: true,
+    })
+    document.addEventListener("gestureend", onGesture, {
+      passive: false,
+      capture: true,
+    })
+
+    document.addEventListener("touchend", onTouchEnd, {
+      passive: false,
+      capture: true,
+    })
 
     return () => {
       document.removeEventListener("contextmenu", onContextMenu, {
         capture: true,
       })
       window.removeEventListener("keydown", onKeyDown, { capture: true })
-      document.removeEventListener("dragstart", onDragStart, { capture: true })
       window.removeEventListener("wheel", onWheel, { capture: true })
+
+      document.removeEventListener("gesturestart", onGesture, { capture: true })
+      document.removeEventListener("gesturechange", onGesture, {
+        capture: true,
+      })
+      document.removeEventListener("gestureend", onGesture, { capture: true })
+
+      document.removeEventListener("touchend", onTouchEnd, { capture: true })
     }
-  }, [enabled])
+  }, [enabled, allowWheelInMap])
 
   return null
 }
