@@ -918,6 +918,184 @@ modal-hidden {
   color: #ffd700;
 }
 
+/* ================================
+   BIGGER RATING UI (Kiosk friendly)
+   ================================ */
+:root {
+  --emoji-hit: 72px;
+  --emoji-gap: 26px;
+  --card-pad-x: 42px;
+  --card-pad-y: 34px;
+
+  /* 5 emojis = 5 hits + 4 gaps */
+  --emoji-row-width: calc((5 * var(--emoji-hit)) + (4 * var(--emoji-gap)));
+}
+
+/* rating card */
+.rating-container {
+  width: var(--rating-card-w);
+  padding: calc(28px * var(--rating-scale)) calc(26px * var(--rating-scale));
+  border-radius: calc(30px * var(--rating-scale));
+  border-width: calc(3px * var(--rating-scale));
+}
+
+/* title text */
+.rating-container .title {
+  font-size: calc(1.6rem * var(--rating-scale));
+  font-weight: 500;
+  margin-bottom: calc(16px * var(--rating-scale));
+}
+
+/* row spacing */
+.rating-icons {
+  gap: calc(18px * var(--rating-scale));
+  margin-bottom: calc(22px * var(--rating-scale));
+}
+
+/* each emoji button (the circular hit area) */
+.rating-icon {
+  width: calc(54px * var(--rating-scale));
+  height: calc(54px * var(--rating-scale));
+  padding: calc(12px * var(--rating-scale));
+  border-radius: 999px;
+}
+
+/* make the SVG inside bigger */
+.rating-icon svg,
+#feedback-container .rating-icon svg {
+  width: calc(34px * var(--rating-scale)) !important;
+  height: calc(34px * var(--rating-scale)) !important;
+  min-width: calc(34px * var(--rating-scale)) !important;
+  min-height: calc(34px * var(--rating-scale)) !important;
+}
+
+/* hover/selected scale tuned for bigger base size */
+.rating-icon:hover {
+  transform: scale(1.1);
+}
+.rating-icon.selected {
+  transform: scale(1.15);
+}
+
+/* progress bar bigger */
+.progress-bar {
+  height: calc(16px * var(--rating-scale));
+  margin-top: calc(18px * var(--rating-scale));
+  border-radius: calc(10px * var(--rating-scale));
+  overflow: hidden; /* makes sections look cleaner */
+}
+
+/* indicator bigger too */
+.progress-indicator {
+  width: calc(14px * var(--rating-scale));
+  height: calc(14px * var(--rating-scale));
+  top: calc(-7px * var(--rating-scale));
+}
+
+/* feedback label bigger */
+.feedback-text {
+  margin-top: calc(20px * var(--rating-scale));
+  font-size: calc(1.4rem * var(--rating-scale));
+}
+
+/* =========================================
+   Make rating card NOT overly wide
+   + make progress bar match emoji row width
+   ========================================= */
+
+/* Tune these */
+.rating-container {
+  --emoji-hit: 72px; /* circle size (hit area) */
+  --emoji-gap: 26px; /* spacing between emojis */
+  --card-pad-x: 42px; /* left/right padding */
+  --card-pad-y: 34px; /* top/bottom padding */
+
+  /* Shrink-wrap to content instead of huge wide card */
+  width: fit-content;
+  max-width: 92vw; /* still safe on small screens */
+  padding: var(--card-pad-y) var(--card-pad-x);
+}
+
+/* Keep the emoji row shrink-wrapped */
+.rating-icons {
+  display: inline-flex; /* important: no stretching */
+  justify-content: center;
+  gap: var(--emoji-gap);
+}
+
+/* Bigger emoji buttons if you want */
+.rating-icon {
+  width: var(--emoji-hit);
+  height: var(--emoji-hit);
+  padding: 14px;
+}
+
+/* Progress bar width = emoji row width (5 emojis) */
+.progress-bar {
+  width: calc((5 * var(--emoji-hit)) + (4 * var(--emoji-gap)));
+  margin: 18px auto 0; /* center it */
+  height: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+/* Optional: make the bar sit a bit lower (not “stuck” to emojis) */
+.progress-bar {
+  margin-top: 26px; /* adjust 18–34px */
+}
+
+.rating-container,
+.thank-you-container {
+  width: fit-content;
+  max-width: 92vw;
+  padding: var(--card-pad-y) var(--card-pad-x);
+
+  border-radius: 28px;
+  border: 2px solid #ffd700;
+  text-align: center;
+
+  background: linear-gradient(
+    347.47deg,
+    rgba(120, 22, 233, 0.7) 31.23%,
+    rgba(255, 255, 255, 0.21) 112.78%
+  );
+
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+}
+
+.thank-you-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+/* constrain text width so it wraps nicely */
+.thank-you-container .message,
+.thank-you-container .title {
+  max-width: var(--emoji-row-width);
+  margin: 0 auto;
+  line-height: 1.4;
+}
+
+.thank-you-container .progress-bar {
+  width: var(--emoji-row-width);
+  height: 16px;
+  margin: 12px auto 0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.thank-you-container .main-emoji {
+  width: 64px;
+  height: 64px;
+}
+
+.thank-you-container .main-emoji svg {
+  width: 100%;
+  height: 100%;
+}
+
 /*
  * 1. THE CONTAINER
  * This new element now handles all the positioning and alignment.
