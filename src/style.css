@@ -716,13 +716,13 @@ modal-hidden {
   display: block;
 }
 
-#feedback-container .rating-icon svg {
+/* #feedback-container .rating-icon svg {
   width: 25px !important;
   height: 25px !important;
   min-width: 25px !important;
   min-height: 25px !important;
   display: block;
-}
+} */
 
 .rating-icon:hover {
   transform: scale(1.15);
@@ -1094,6 +1094,61 @@ modal-hidden {
 .thank-you-container .main-emoji svg {
   width: 100%;
   height: 100%;
+}
+/* =========================================
+   Kiosk typography upgrade (rating + thanks)
+   ========================================= */
+
+.rating-container,
+.thank-you-container {
+  --title-size: 1.9rem;
+  --body-size: 1.35rem;
+}
+
+/* Title text */
+.rating-container .title,
+.thank-you-container .title {
+  font-size: var(--title-size);
+  font-weight: 600; /* semibold (not too heavy) */
+  letter-spacing: 0.4px;
+}
+
+/* Main messages / body text */
+.rating-container .feedback-text,
+.thank-you-container .message {
+  font-size: var(--body-size);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.25px;
+}
+
+/* Optional: emoji captions / small helper text */
+.rating-container small,
+.thank-you-container small {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+/* Make the emoji FACE (svg) scale with the bigger button */
+.rating-container,
+.thank-you-container {
+  --emoji-face: 44px; /* change to 40–56 if you want */
+}
+
+/* rating icons size (circle already big) */
+.rating-icon {
+  width: var(--emoji-hit, 72px);
+  height: var(--emoji-hit, 72px);
+}
+
+/* override the old 25px !important */
+.rating-icon svg,
+#feedback-container .rating-icon svg {
+  width: var(--emoji-face) !important;
+  height: var(--emoji-face) !important;
+  min-width: var(--emoji-face) !important;
+  min-height: var(--emoji-face) !important;
+  display: block;
 }
 
 /*
