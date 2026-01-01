@@ -155,6 +155,15 @@ export class SpeechEngine {
   }
   // Greeting when person detected by camera engine..
   async speakGreeting() {
+    // dotn greet if conversation already started..
+    const hasConversation = this.conversationHistory?.some(
+      (m) => m.role === "user" || m.role === "assistant"
+    )
+
+    if (hasConversation) {
+      return
+    }
+
     if (this.isListening || this.isProcessing) {
       // skip greeting if already busy
       return
