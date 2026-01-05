@@ -39,8 +39,19 @@ const OnScreenKeyboard = ({ value, onChange, onEnter }) => {
     [onChange]
   )
 
+  const flashKey = useCallback((btn) => {
+    const el = document.querySelector(
+      `.kb-dockInner .hg-button[data-skbtn="${btn}"]`
+    )
+    if (!el) return
+    el.classList.add("is-pressed")
+    window.setTimeout(() => el.classList.remove("is-pressed"), 120)
+  }, [])
+
   const onKbKeyPress = useCallback(
     (btn) => {
+      flashKey(btn) // show pressed highlight
+
       if (btn === "{shift}" || btn === "{lock}") {
         setLayoutName((p) => (p === "default" ? "shift" : "default"))
         return
@@ -49,7 +60,7 @@ const OnScreenKeyboard = ({ value, onChange, onEnter }) => {
         onEnter?.((value || "").trim())
       }
     },
-    [onEnter, value]
+    [flashKey, onEnter, value]
   )
 
   // SSR / safety..
