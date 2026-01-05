@@ -70,3 +70,22 @@
   height: clamp(38px, 5.2vh, 46px);
   font-size: clamp(14px, 1.8vh, 16px);
 }
+/* Make keys feel tappable */
+.kb-dockInner .hg-button {
+  transition: transform 80ms ease, filter 80ms ease, box-shadow 80ms ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Visual press feedback (touch + mouse) */
+.kb-dockInner .hg-button:active {
+  transform: translateY(1px) scale(0.98);
+  filter: brightness(0.92);
+  box-shadow: 0 0 0 3px rgba(255, 228, 87, 0.55), 0 2px 0 rgba(0, 0, 0, 0.22);
+}
+
+/* Optional: also show highlight when focused (keyboard navigation / accessibility) */
+.kb-dockInner .hg-button:focus-visible {
+  outline: 3px solid rgba(255, 228, 87, 0.75);
+  outline-offset: 2px;
+}
