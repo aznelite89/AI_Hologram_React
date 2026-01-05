@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef } from "react"
 import { useMap, Marker, useMapViewEvent } from "@mappedin/react-sdk"
 
+const YOU_ARE_HERE_NAME = "You're here"
+
 const MapOverlay = () => {
   const { mapData, mapView } = useMap()
   const startCoordRef = useRef(null)
@@ -15,13 +17,20 @@ const MapOverlay = () => {
     return mapData.getByType("point-of-interest") || []
   }, [mapData])
 
+  const youAreHerePoi = useMemo(() => {
+    const key = YOU_ARE_HERE_NAME.trim().toLowerCase()
+    return pois.find((p) => (p?.name || "").trim().toLowerCase() === key)
+  }, [pois])
+
+  const poisForNormalRender = useMemo(() => {
+    if (!youAreHerePoi) return pois
+    return pois.filter((p) => p.id !== youAreHerePoi.id)
+  }, [pois, youAreHerePoi])
+
   useEffect(() => {
     if (!mapView) return
-
     spaces.forEach((space) => {
-      mapView.updateState(space, {
-        interactive: true,
-      })
+      mapView.updateState(space, { interactive: true })
     })
   }, [mapView, spaces])
 
@@ -29,10 +38,10 @@ const MapOverlay = () => {
     if (!mapView) return
     startCoordRef.current = {
       __type: "coordinate",
-      latitude: 1.3330655323295095,
-      longitude: 103.73545120379882,
+      latitude: 1.3330702148014424,
+      longitude: 103.7354149527466,
       floorId: "m_1eb00e35b7fea9c4",
-      verticalOffset: 0,
+      verticalOffset: 0.10000000149011612,
     }
 
     mapView.Camera.animateTo(
@@ -151,7 +160,7 @@ const MapOverlay = () => {
             style={{
               borderRadius: "10px",
               padding: "5px",
-              boxShadow: "0px 0px 1px rgba(0, 0, 0, 0.25)",
+              boxShadow: "0px 0px 1px rgba(0,0,0,0.25)",
               fontFamily: "sans-serif",
               fontSize: "11px",
               lineHeight: 1.2,
@@ -162,8 +171,7 @@ const MapOverlay = () => {
           </div>
         </Marker>
       ))}
-
-      {pois.map((poi) => (
+      {poisForNormalRender.map((poi) => (
         <Marker key={poi.id} target={poi} options={{ interactive: true }}>
           <div
             style={{
@@ -181,6 +189,22 @@ const MapOverlay = () => {
           </div>
         </Marker>
       ))}
+      {youAreHerePoi ? (
+        <Marker
+          key={`you-are-here-${youAreHerePoi.id}`}
+          target={youAreHerePoi}
+          options={{
+            interactive: false,
+            placement: "right",
+            rank: "always-visible",
+          }}
+        >
+          <div className="you-here">
+            <span className="you-here-dot" />
+            <span className="you-here-chip">You are here</span>
+          </div>
+        </Marker>
+      ) : null}
     </>
   )
 }

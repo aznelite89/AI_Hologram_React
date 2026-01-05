@@ -58,3 +58,27 @@
   border: 1px solid #fff;
   opacity: 1;
 }
+
+.you-here {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.you-here-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #2f80ff;
+  box-shadow: 0 0 0 4px rgba(47, 128, 255, 0.25);
+}
+
+.you-here-chip {
+  background: #111;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font: 600 12px/1 system-ui, sans-serif;
+  white-space: nowrap;
+}
