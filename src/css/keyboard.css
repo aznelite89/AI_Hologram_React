@@ -72,7 +72,31 @@
 }
 /* keyboard pres effect*/
 .kb-dockInner .hg-button.is-pressed {
-  transform: translateY(1px) scale(0.98);
-  filter: brightness(0.92);
-  box-shadow: 0 0 0 4px rgba(255, 228, 87, 0.65), 0 2px 0 rgba(0, 0, 0, 0.22);
+  transform: translateY(2px) scale(0.96);
+
+  /* Darken key clearly */
+  background: #ffe457 !important; /* Science Centre yellow */
+  color: #111 !important;
+
+  /* Thick glow ring */
+  box-shadow: 0 0 0 5px rgba(255, 228, 87, 0.9), 0 6px 0 rgba(0, 0, 0, 0.25);
+
+  filter: none;
+}
+
+.kb-dockInner .hg-button:active {
+  background: #ffe457 !important;
+  color: #111 !important;
+
+  transform: translateY(2px) scale(0.96);
+  box-shadow: 0 0 0 4px rgba(255, 228, 87, 0.8), 0 6px 0 rgba(0, 0, 0, 0.25);
+}
+
+.kb-dockInner .hg-button[data-skbtn="{enter}"].is-pressed,
+.kb-dockInner .hg-button[data-skbtn="{space}"].is-pressed,
+.kb-dockInner .hg-button[data-skbtn="{bksp}"].is-pressed {
+  background: #4caf50 !important;
+  color: #fff !important;
+
+  box-shadow: 0 0 0 5px rgba(76, 175, 80, 0.9), 0 6px 0 rgba(0, 0, 0, 0.25);
 }
