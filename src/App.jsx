@@ -4,7 +4,11 @@ import ActionBtnPanel from "./components/ActionBtnPanel.jsx"
 import TopPanel from "./components/TopPanel/index.jsx"
 import { HologramEngine } from "./engine/HologramEngine.js"
 import { SpeechEngine } from "./engine/SpeechEngine.js"
-import { setSpeechState, setConversation } from "./slices/speechSlice"
+import {
+  setSpeechState,
+  setConversation,
+  resetConversation,
+} from "./slices/speechSlice"
 import {
   setCameraEngine,
   setHologramEngine,
@@ -19,6 +23,7 @@ import EnginePageTypeController from "./engine/EnginePageTypeController.js"
 import { Main, Map } from "./constants/PageType.js"
 import MappedinMap from "./components/MappedinMap.jsx"
 import { setPageType } from "./slices/commonSlice.js"
+import { resetFeedback } from "./slices/feedbackSlice.js"
 
 export default function App() {
   const dispatch = useDispatch()
@@ -199,7 +204,10 @@ export default function App() {
     enabled: true,
     timeoutMs: 60000,
     onTimeout: () => {
+      speechRef.current?.stop?.()
       speechRef.current?.resetConversation?.()
+      dispatch(resetConversation())
+      dispatch(resetFeedback())
       if (pageType == Map) dispatch(setPageType({ pageType: Main }))
     },
     isBlocked: () => {
