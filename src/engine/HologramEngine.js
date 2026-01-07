@@ -320,10 +320,12 @@ export class HologramEngine {
   constructor({
     backgroundUrl = "/SC_BG.glb",
     avatarUrl = "/Male_Waving_Final.glb",
+    sleepAvatarUrl = "/male_sleeping.glb",
     showStats = true,
   } = {}) {
     this.backgroundUrl = backgroundUrl
     this.avatarUrl = avatarUrl
+    this.sleepAvatarUrl = sleepAvatarUrl
     this.showStats = showStats
 
     this.containerEl = null
@@ -338,6 +340,13 @@ export class HologramEngine {
     this.model = null
     this.morph = null
     this.gaze = null
+
+    // sleeping model, actions
+    this.sleepModel = null
+    this._awakeAction = null
+    this._sleepAction = null
+    this._isSleeping = false
+    this._quietCheckAcc = 0
 
     this._raf = 0
     this._onResize = this._onResize.bind(this)
@@ -418,6 +427,7 @@ export class HologramEngine {
 
     await this._loadBackground(this.backgroundUrl)
     await this._loadAvatar(this.avatarUrl)
+    await this._loadSleepAvatar(this.sleepAvatarUrl)
     this._freezeMaterials()
 
     if (this.showStats) {
@@ -457,18 +467,29 @@ export class HologramEngine {
     this.clock = null
     this.mixer = null
     this.animationGroup = null
+
     this.model = null
+    this.sleepModel = null
+
     this.morph = null
     this.gaze = null
     this.stats = null
+
+    this._awakeAction = null
+    this._sleepAction = null
+    this._isSleeping = false
+    this._quietCheckAcc = 0
   }
 
-  // Public helpers
   setViseme(visemeName, influence = 1) {
+    // ignore visemes while sleeping
+    if (this._isSleeping) return
     this.morph?.setVisemeInfluence(visemeName, influence)
   }
 
   closeMouth() {
+    // ignore closeMouth while sleeping
+    if (this._isSleeping) return
     this.morph?.closeMouth()
   }
 
@@ -479,11 +500,23 @@ export class HologramEngine {
     this._raf = requestAnimationFrame(() => this._tick())
 
     const delta = this.clock.getDelta()
-    this.mixer?.update(delta)
-    this.morph?.update(delta)
-    this.gaze?.update(delta)
-    this.stats?.update()
 
+    // throttle quiet-hours check (once per ~10s)
+    this._quietCheckAcc += delta
+    if (this._quietCheckAcc >= 10.0) {
+      this._quietCheckAcc = 0
+      this._setSleepingMode(this._isQuietHoursGMT8(new Date()))
+    }
+
+    this.mixer?.update(delta)
+
+    // freeze morph/gaze while sleeping
+    if (!this._isSleeping) {
+      this.morph?.update(delta)
+      this.gaze?.update(delta)
+    }
+
+    this.stats?.update()
     this.renderer.render(this.scene, this.camera)
   }
 
@@ -571,13 +604,92 @@ export class HologramEngine {
     if (gltf.animations && gltf.animations.length > 0) {
       console.log(`✅ Found ${gltf.animations.length} animations inside ${url}`)
       const clip = gltf.animations[0]
-      const action = this.mixer.clipAction(clip)
-      action.play()
+      this._awakeAction = this.mixer.clipAction(clip)
+      this._awakeAction.play()
     } else {
       console.warn(`⚠️ No embedded animations found in ${url}`)
     }
 
     return this.model
+  }
+
+  async _loadSleepAvatar(url) {
+    const loader = new GLTFLoader()
+    const gltf = await loader.loadAsync(url)
+
+    this.sleepModel = gltf.scene
+    this.sleepModel.visible = false // hidden by default
+
+    this.sleepModel.traverse((object) => {
+      if (object.isMesh) {
+        const canShadow = !!PERF.SHADOWS && window.innerWidth < 1920
+        object.castShadow = canShadow
+        object.receiveShadow = canShadow
+
+        if (object.material) {
+          object.material.envMapIntensity = 0.3
+          const newMaterial = object.material.clone()
+          newMaterial.morphTargets = true
+          object.material = newMaterial
+        }
+      }
+    })
+
+    this.scene.add(this.sleepModel)
+    this.animationGroup.add(this.sleepModel)
+
+    if (gltf.animations && gltf.animations.length > 0) {
+      console.log(`Found ${gltf.animations.length} animations inside ${url}`)
+      const clip = gltf.animations[0]
+      this._sleepAction = this.mixer.clipAction(clip)
+      this._sleepAction.stop() // do not auto play
+    } else {
+      console.warn(`No embedded animations found in ${url}`)
+    }
+
+    // apply initial mode immediately (in case app starts at night)
+    this._setSleepingMode(this._isQuietHoursGMT8(new Date()))
+
+    return this.sleepModel
+  }
+
+  // -------- Quiet hours (GMT+8) --------
+  _getNowGMT8(date = new Date()) {
+    // Convert local time -> UTC -> GMT+8
+    const utcMs = date.getTime() + date.getTimezoneOffset() * 60_000
+    return new Date(utcMs + 8 * 60 * 60_000)
+  }
+
+  _isQuietHoursGMT8(date = new Date()) {
+    const d = this._getNowGMT8(date)
+    const h = d.getHours()
+    return h >= 19 || h < 7 // quite hour setup here..
+  }
+
+  _setSleepingMode(shouldSleep) {
+    if (this._isSleeping === shouldSleep) return
+    this._isSleeping = shouldSleep
+
+    if (this.model) this.model.visible = !shouldSleep
+    if (this.sleepModel) this.sleepModel.visible = shouldSleep
+
+    if (shouldSleep) {
+      // stop talking + gaze updates
+      this.morph?.closeMouth()
+      if (this.morph) this.morph.isTalking = false
+
+      if (this._awakeAction) this._awakeAction.stop()
+      if (this._sleepAction) {
+        this._sleepAction.reset()
+        this._sleepAction.play()
+      }
+    } else {
+      if (this._sleepAction) this._sleepAction.stop()
+      if (this._awakeAction) {
+        this._awakeAction.reset()
+        this._awakeAction.play()
+      }
+    }
   }
 
   _freezeMaterials() {
