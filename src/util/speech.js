@@ -33,9 +33,21 @@ export function extractAssistantText(raw) {
   // string (either plain text OR JSON string)..
   if (typeof raw !== "string") return String(raw)
 
-  const s = raw.trim()
+  let s = raw.trim()
   if (!s) return ""
-
+  // strip markdown code fences if present....
+  const fenceMatch = s.match(/```(?:json|JSON)?\s*([\s\S]*?)\s*```/)
+  if (fenceMatch?.[1]) {
+    s = fenceMatch[1].trim()
+  } else {
+    // If it starts with ``` but doesn't match perfectly, do a safer manual strip
+    if (s.startsWith("```")) {
+      s = s
+        .replace(/^```(?:json|JSON)?\s*/i, "")
+        .replace(/\s*```$/, "")
+        .trim()
+    }
+  }
   const looksLikeJson =
     (s.startsWith("{") && s.endsWith("}")) ||
     (s.startsWith("[") && s.endsWith("]"))
