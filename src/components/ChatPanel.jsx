@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from "react"
 import { censorBadWords } from "../util/common"
-import { extractAssistantText, getLastNMessages } from "../util/speech"
+import { getLastNMessages } from "../util/speech"
 import OnScreenKeyboard from "./OnScreenKeyboard"
 
 const ChatPanel = ({
@@ -71,16 +71,12 @@ const ChatPanel = ({
 
     return last3.map((msg, idx) => {
       const isUser = msg?.get("role") === "user"
-      const rawContent = msg?.get("content")
-      const displayText = isUser
-        ? String(rawContent ?? "")
-        : extractAssistantText(rawContent)
       return {
         key:
           msg?.get("id") ??
           `${msg?.get("role") ?? "msg"}-${idx}-${msg?.get("timestamp") ?? ""}`,
         className: isUser ? "chat-bubble user" : "chat-bubble assistant",
-        content: censorBadWords(displayText),
+        content: censorBadWords(msg?.get("content") ?? ""),
       }
     })
   }, [full])
