@@ -320,11 +320,13 @@ export class HologramEngine {
   constructor({
     backgroundUrl = "/SC_BG.glb",
     avatarUrl = "/Male_Waving_Final.glb",
+    talkingAvatarUrl = "/male_talking.glb", // animation-only source
     sleepAvatarUrl = "/male_sleeping.glb",
     showStats = true,
   } = {}) {
     this.backgroundUrl = backgroundUrl
     this.avatarUrl = avatarUrl
+    this.talkingAvatarUrl = talkingAvatarUrl
     this.sleepAvatarUrl = sleepAvatarUrl
     this.showStats = showStats
 
@@ -344,9 +346,14 @@ export class HologramEngine {
     // sleeping model, actions
     this.sleepModel = null
     this._awakeAction = null
+    this._talkAction = null // ADDED
     this._sleepAction = null
     this._isSleeping = false
     this._quietCheckAcc = 0
+
+    // talk state + fade
+    this._isTalkingAnim = false
+    this._fadeSeconds = 0.18
 
     this._raf = 0
     this._onResize = this._onResize.bind(this)
@@ -427,6 +434,10 @@ export class HologramEngine {
 
     await this._loadBackground(this.backgroundUrl)
     await this._loadAvatar(this.avatarUrl)
+
+    // load talking GLB animation only.. (do not add its scene)
+    await this._loadTalkingAnimation(this.talkingAvatarUrl)
+
     await this._loadSleepAvatar(this.sleepAvatarUrl)
     this._freezeMaterials()
 
@@ -476,7 +487,9 @@ export class HologramEngine {
     this.stats = null
 
     this._awakeAction = null
+    this._talkAction = null
     this._sleepAction = null
+    this._isTalkingAnim = false
     this._isSleeping = false
     this._quietCheckAcc = 0
   }
@@ -491,6 +504,62 @@ export class HologramEngine {
     // ignore closeMouth while sleeping
     if (this._isSleeping) return
     this.morph?.closeMouth()
+  }
+
+  // ===================
+  //talking animation controls (same avatar, different clip)
+  // ===================
+  startTalkingAnimation() {
+    if (this._isSleeping) return
+    if (!this._talkAction || !this._awakeAction) return
+    if (this._isTalkingAnim) return
+    this._isTalkingAnim = true
+
+    try {
+      //ensure awake is running (crossFade needs both alive)
+      this._awakeAction.enabled = true
+      this._awakeAction.setEffectiveWeight(1)
+      this._awakeAction.setLoop(THREE.LoopRepeat, Infinity)
+      if (!this._awakeAction.isRunning()) this._awakeAction.play()
+
+      // start talk
+      this._talkAction.enabled = true
+      this._talkAction.setEffectiveTimeScale(1)
+      this._talkAction.setEffectiveWeight(1)
+      this._talkAction.setLoop(THREE.LoopRepeat, Infinity)
+      this._talkAction.reset()
+      this._talkAction.play()
+
+      // fade
+      this._awakeAction.crossFadeTo(this._talkAction, this._fadeSeconds, false)
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  stopTalkingAnimation() {
+    if (!this._isTalkingAnim) return
+    this._isTalkingAnim = false
+    if (!this._talkAction || !this._awakeAction) return
+
+    try {
+      // guarantee awake will take over again
+      this._awakeAction.enabled = true
+      this._awakeAction.setLoop(THREE.LoopRepeat, Infinity)
+      this._awakeAction.reset()
+      this._awakeAction.play()
+
+      //fade talk -> awake
+      this._talkAction.crossFadeTo(this._awakeAction, this._fadeSeconds, false)
+      // stop talk after fade
+      setTimeout(() => {
+        try {
+          this._talkAction?.stop()
+        } catch (e) {}
+      }, Math.ceil(this._fadeSeconds * 1000) + 80)
+    } catch (e) {
+      // ignore
+    }
   }
 
   // ===================
@@ -602,15 +671,42 @@ export class HologramEngine {
 
     // Play embedded animation if present
     if (gltf.animations && gltf.animations.length > 0) {
+      console.log(`Found ${gltf.animations.length} animations inside ${url}`)
+      const clip = gltf.animations[0]
+      this._awakeAction = this.mixer.clipAction(clip, this.model)
+      this._awakeAction.enabled = true
+      this._awakeAction.clampWhenFinished = false
+      this._awakeAction.setLoop(THREE.LoopRepeat, Infinity)
+      this._awakeAction.reset()
+      this._awakeAction.play()
+    } else {
+      console.warn(`No embedded animations found in ${url}`)
+    }
+    return this.model
+  }
+
+  // load talking animation clip from separate GLB and apply to same avatar model
+  async _loadTalkingAnimation(url) {
+    if (!url) return
+    const loader = new GLTFLoader()
+    const gltf = await loader.loadAsync(url)
+
+    if (gltf.animations && gltf.animations.length > 0) {
       console.log(`✅ Found ${gltf.animations.length} animations inside ${url}`)
       const clip = gltf.animations[0]
-      this._awakeAction = this.mixer.clipAction(clip)
-      this._awakeAction.play()
+
+      if (this.model) {
+        this._talkAction = this.mixer.clipAction(clip, this.model)
+
+        //prep talk action but do not auto-play
+        this._talkAction.enabled = true
+        this._talkAction.clampWhenFinished = false
+        this._talkAction.setLoop(THREE.LoopRepeat, Infinity)
+        this._talkAction.stop()
+      }
     } else {
       console.warn(`⚠️ No embedded animations found in ${url}`)
     }
-
-    return this.model
   }
 
   async _loadSleepAvatar(url) {
@@ -641,7 +737,7 @@ export class HologramEngine {
     if (gltf.animations && gltf.animations.length > 0) {
       console.log(`Found ${gltf.animations.length} animations inside ${url}`)
       const clip = gltf.animations[0]
-      this._sleepAction = this.mixer.clipAction(clip)
+      this._sleepAction = this.mixer.clipAction(clip, this.sleepModel)
       this._sleepAction.stop() // do not auto play
     } else {
       console.warn(`No embedded animations found in ${url}`)
@@ -677,6 +773,10 @@ export class HologramEngine {
       // stop talking + gaze updates
       this.morph?.closeMouth()
       if (this.morph) this.morph.isTalking = false
+
+      // ensure talk animation stops
+      this._isTalkingAnim = false
+      if (this._talkAction) this._talkAction.stop()
 
       if (this._awakeAction) this._awakeAction.stop()
       if (this._sleepAction) {

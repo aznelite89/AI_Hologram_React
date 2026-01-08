@@ -73,12 +73,10 @@ export class SpeechEngine {
     this._handleRecognitionEnd = this._handleRecognitionEnd.bind(this)
   }
 
-  // ---------------------------
   // Lifecycle
-  // ---------------------------
   async init() {
     await this._loadDocumentContent()
-    // cache prompt once
+    // cache prompt once for reuse
     this._systemPrompt = this._buildSystemPrompt()
     this._initSpeechRecognition()
     this._emitState()
@@ -90,14 +88,10 @@ export class SpeechEngine {
       this.stop()
       this._stopAudio(true)
       this.recognition = null
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
   }
 
-  // ---------------------------
   // Public API
-  // ---------------------------
   getState() {
     return {
       isListening: this.isListening,
@@ -129,7 +123,6 @@ export class SpeechEngine {
         this._setVoiceStatus("Listening...")
         this._emitState()
       } catch (e) {
-        // Sometimes start() throws if called too fast
         this.onError(e)
       }
     }
@@ -139,9 +132,7 @@ export class SpeechEngine {
     if (this.recognition && this.isListening) {
       try {
         this.recognition.stop()
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
     this.isListening = false
     this._setVoiceStatus("Processing...")
@@ -156,19 +147,11 @@ export class SpeechEngine {
   }
   // Greeting when person detected by camera engine..
   async speakGreeting() {
-    // dotn greet if conversation already started..
     const hasConversation = this.conversationHistory?.some(
       (m) => m.role === "user" || m.role === "assistant"
     )
-
-    if (hasConversation) {
-      return
-    }
-
-    if (this.isListening || this.isProcessing) {
-      // skip greeting if already busy
-      return
-    }
+    if (hasConversation) return
+    if (this.isListening || this.isProcessing) return
 
     this._setState({
       isProcessing: true,
@@ -220,9 +203,6 @@ export class SpeechEngine {
     this._emitState()
   }
 
-  /**
-   * Reset conversation context
-   */
   resetConversation() {
     this.conversationHistory = []
     this.currentSession = null
@@ -230,10 +210,7 @@ export class SpeechEngine {
     this._emitState()
     this.onSession({ sessionId: null })
   }
-
-  // ---------------------------
   // Speech Recognition (STT)
-  // ---------------------------
   _initSpeechRecognition() {
     if (!("webkitSpeechRecognition" in window)) {
       console.warn("Speech recognition not supported in this browser")
@@ -288,9 +265,7 @@ export class SpeechEngine {
     this._emitState()
   }
 
-  // ---------------------------
   // Core pipeline: user -> LLM -> TTS
-  // ---------------------------
   async _processUserMessage(rawText) {
     const transcript = String(rawText || "").trim()
     if (!transcript) return
@@ -304,7 +279,6 @@ export class SpeechEngine {
       this._abortController?.abort?.()
     } catch (e) {}
     this._abortController = new AbortController()
-
     //single batched state emit (instead of multiple back-to-back)
     this._setState({ isProcessing: true, voiceStatus: "Thinking..." })
 
@@ -331,7 +305,6 @@ export class SpeechEngine {
       this._setState({
         voiceStatus: "Error occurred - Click microphone to try again",
       })
-      // fallback
       await this._speakFallback(
         "I'm having technical difficulties. Could you please try again?"
       )
@@ -339,13 +312,9 @@ export class SpeechEngine {
       this._setState({ isProcessing: false })
     }
   }
-
-  // ---------------------------
   // Conversation + Session
-  // ---------------------------
   _addToConversationHistory(role, content) {
     const now = Date.now()
-
     // Reset context if inactive too long
     if (now - this.lastInteractionTime > this.cfg.conversationTimeoutMs) {
       this.resetConversation()
@@ -392,7 +361,6 @@ export class SpeechEngine {
   }
 
   _emitConversation() {
-    // only shows last 3 (do nt censor here..)
     const visible = this.conversationHistory
       .filter((m) => m.role !== "system")
       .slice(-3)
@@ -403,12 +371,8 @@ export class SpeechEngine {
       sessionId: this.currentSession,
     })
   }
-
-  // ---------------------------
   // Gemini
-  // ---------------------------
   async _callGemini({ signal } = {}) {
-    // Use cached prompt if available (big string)
     const systemPrompt = this._systemPrompt || this._buildSystemPrompt()
 
     const contents = this.conversationHistory
@@ -679,10 +643,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     const msg = data?.choices?.[0]?.message?.content?.trim()
     return msg || "Hello! It's great to see you!"
   }
-
-  // ---------------------------
   // TTS (ElevenLabs) + lips
-  // ---------------------------
   async _speakWithElevenLabs(text) {
     const { apiKey, voiceId } = this.elevenlabs
     if (!apiKey || !voiceId) {
@@ -726,12 +687,13 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     this._currentAudio = audio
     // Start naive lips while speaking
     this._startLipsWhileSpeaking(audio)
-
+    // start talking animation
+    this.hologram?.startTalkingAnimation?.()
     await audio.play()
-
     // if stop() was pressed immediately, stop talk and lips ani immediately..
     if (!this._currentAudio) {
       this._stopLips()
+      this.hologram?.stopTalkingAnimation?.()
       return
     }
 
@@ -742,6 +704,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
 
     this._stopLips()
     this.hologram?.closeMouth?.()
+    this.hologram?.stopTalkingAnimation?.()
 
     URL.revokeObjectURL(audioUrl)
     this._currentAudio = null
@@ -786,6 +749,9 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     this._currentAudio = null
     this._stopLips()
     if (force) this.hologram?.closeMouth?.()
+
+    //  stop talking animation on forced stop
+    this.hologram?.stopTalkingAnimation?.()
   }
 
   async _speakFallback(text) {
@@ -795,16 +761,20 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       utterance.rate = 0.9
       utterance.pitch = 1
       utterance.volume = 0.8
-      utterance.onend = resolve
-      utterance.onerror = resolve
+      this.hologram?.startTalkingAnimation?.()
+      utterance.onend = () => {
+        this.hologram?.stopTalkingAnimation?.()
+        resolve()
+      }
+      utterance.onerror = () => {
+        this.hologram?.stopTalkingAnimation?.()
+        resolve()
+      }
       window.speechSynthesis.cancel()
       window.speechSynthesis.speak(utterance)
     })
   }
-
-  // ---------------------------
   // Helpers
-  // ---------------------------
   async _loadDocumentContent() {
     try {
       const resp = await fetch(this.documentUrl)
