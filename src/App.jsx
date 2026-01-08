@@ -27,8 +27,8 @@ import { resetFeedback } from "./slices/feedbackSlice.js"
 
 export default function App() {
   const dispatch = useDispatch()
-  const [pageType] = useSelector((state) => {
-    return [state.common.get("pageType")]
+  const [pageType, conversation] = useSelector((state) => {
+    return [state.common.get("pageType"), state.speech.get("conversationFull")]
   }, ArrayEqual)
 
   const hologramRef = useRef(null)
@@ -224,7 +224,6 @@ export default function App() {
       if (!speech || !holo || !cam) return
 
       const s = speech.getState?.() || {}
-
       // no current session (you already reset session to null on inactivity)
       const noSession = !s.sessionId
 
@@ -237,7 +236,8 @@ export default function App() {
         ? Date.now() - lastSeen >= NO_PERSON_MS
         : sinceStart >= NO_PERSON_MS
 
-      const shouldIdleSleep = noPersonLongEnough && noSession && !busy
+      const shouldIdleSleep =
+        noPersonLongEnough && noSession && !busy && conversation?.size == 0
 
       if (shouldIdleSleep !== idleSleepAppliedRef.current) {
         idleSleepAppliedRef.current = shouldIdleSleep
@@ -246,7 +246,7 @@ export default function App() {
     }, CHECK_EVERY_MS)
 
     return () => clearInterval(t)
-  }, [])
+  }, [conversation])
 
   useInactivityReset({
     enabled: true,
