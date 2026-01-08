@@ -56,6 +56,8 @@ export class SpeechEngine {
     this.recognition = null
     this.isListening = false
     this.isProcessing = false
+    // speaking flag
+    this.isSpeaking = false
     this.voiceStatus = "Ready to talk - Click microphone to speak"
 
     this.conversationHistory = []
@@ -96,6 +98,7 @@ export class SpeechEngine {
     return {
       isListening: this.isListening,
       isProcessing: this.isProcessing,
+      isSpeaking: this.isSpeaking,
       voiceStatus: this.voiceStatus,
       sessionId: this.currentSession,
       history: [...this.conversationHistory],
@@ -112,6 +115,7 @@ export class SpeechEngine {
 
   startListening() {
     if (this.isProcessing) return
+    if (this.isSpeaking) return // don’t start STT while TTS is playing
     if (!this.recognition) this._initSpeechRecognition()
     if (!this.recognition) return
 
@@ -151,7 +155,7 @@ export class SpeechEngine {
       (m) => m.role === "user" || m.role === "assistant"
     )
     if (hasConversation) return
-    if (this.isListening || this.isProcessing) return
+    if (this.isListening || this.isProcessing || this.isSpeaking) return
 
     this._setState({
       isProcessing: true,
@@ -199,6 +203,7 @@ export class SpeechEngine {
     this._stopAudio(true)
 
     this.isProcessing = false
+    this.isSpeaking = false
     this._setVoiceStatus("Ready to talk - Click microphone to speak")
     this._emitState()
   }
@@ -259,7 +264,7 @@ export class SpeechEngine {
 
   _handleRecognitionEnd() {
     this.isListening = false
-    if (!this.isProcessing) {
+    if (!this.isProcessing && !this.isSpeaking) {
       this._setVoiceStatus("Ready to talk - Click microphone to speak")
     }
     this._emitState()
@@ -272,6 +277,11 @@ export class SpeechEngine {
 
     if (this.isProcessing) {
       console.log("Already processing, ignoring new input")
+      return
+    }
+    if (this.isSpeaking) {
+      // don’t start another turn while TTS is playing
+      console.log("Currently speaking, ignoring new input")
       return
     }
     // Abort any in-flight request (prevents queueing + stale updates)
@@ -685,6 +695,9 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     const audioUrl = URL.createObjectURL(audioBlob)
     const audio = new Audio(audioUrl)
     this._currentAudio = audio
+    // mark speaking + emit once so App/camera gating can react
+    this.isSpeaking = true
+    this._emitState()
     // Start naive lips while speaking
     this._startLipsWhileSpeaking(audio)
     // start talking animation
@@ -694,6 +707,8 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     if (!this._currentAudio) {
       this._stopLips()
       this.hologram?.stopTalkingAnimation?.()
+      this.isSpeaking = false
+      this._emitState()
       return
     }
 
@@ -708,6 +723,8 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
 
     URL.revokeObjectURL(audioUrl)
     this._currentAudio = null
+    this.isSpeaking = false
+    this._emitState()
   }
 
   _startLipsWhileSpeaking(audio) {
@@ -749,13 +766,19 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     this._currentAudio = null
     this._stopLips()
     if (force) this.hologram?.closeMouth?.()
-
+    // ensure state flips when stopping audio
+    if (this.isSpeaking) {
+      this.isSpeaking = false
+      this._emitState()
+    }
     //  stop talking animation on forced stop
     this.hologram?.stopTalkingAnimation?.()
   }
 
   async _speakFallback(text) {
     if (!("speechSynthesis" in window)) return
+    this.isSpeaking = true
+    this._emitState()
     return new Promise((resolve) => {
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.rate = 0.9
@@ -764,10 +787,14 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       this.hologram?.startTalkingAnimation?.()
       utterance.onend = () => {
         this.hologram?.stopTalkingAnimation?.()
+        this.isSpeaking = false
+        this._emitState()
         resolve()
       }
       utterance.onerror = () => {
         this.hologram?.stopTalkingAnimation?.()
+        this.isSpeaking = false
+        this._emitState()
         resolve()
       }
       window.speechSynthesis.cancel()
@@ -817,6 +844,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     this.onState({
       isListening: this.isListening,
       isProcessing: this.isProcessing,
+      isSpeaking: this.isSpeaking,
       voiceStatus: this.voiceStatus,
       sessionId: this.currentSession,
     })

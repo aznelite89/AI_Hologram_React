@@ -6,6 +6,9 @@ const DEFAULTS = {
   detectEveryMs: 2000,
   scoreThreshold: 0.5,
   cooldownMs: 750000,
+  // while in cooldown (greeting suppressed), still do occasional detection
+  // to maintain accurate presence (for idle sleep logic) without heavy compute.
+  presenceEveryMs: 8000,
   // For big kiosk / farther subjects..
   detectWidth: 416, // 416/512/640 depending on performance.. 512 is less ~36% pixel to be procesed, 416 around ~2.4x faster
   maxNumBoxes: 3,
@@ -18,6 +21,8 @@ const DEFAULTS = {
 export class CameraEngine {
   constructor(opts = {}) {
     this.onPerson = opts.onPerson ?? (() => {})
+    //presence callback (fires whenever a person is seen, even during cooldown)
+    this.onPresence = opts.onPresence ?? (() => {})
     this.onState = opts.onState ?? (() => {})
     this.onError = opts.onError ?? ((e) => console.error(e))
     this.canTrigger = opts.canTrigger ?? (() => true)
@@ -34,6 +39,11 @@ export class CameraEngine {
     this.cameraError = null
 
     this.lastPersonDetectedTime = 0
+    // always update when a person is seen (used for idle sleep)
+    this.lastPersonSeenAt = 0
+    // throttle presence checks during cooldown
+    this._lastPresenceCheckAt = 0
+
     this._busy = false
     this._canvas = null
     this._ctx = null
@@ -54,7 +64,9 @@ export class CameraEngine {
 
     await this._startCamera()
     await this._loadModel()
-
+    const now = Date.now()
+    this.lastPersonSeenAt = now
+    this._lastPresenceCheckAt = now
     this._emitState()
   }
 
@@ -211,10 +223,16 @@ export class CameraEngine {
     this._busy = true
     try {
       const now = Date.now()
+      const inCooldown = now - this.lastPersonDetectedTime < this.cfg.cooldownMs
 
       // Early gating for less compute
-      if (now - this.lastPersonDetectedTime < this.cfg.cooldownMs) return
-      if (!this.canTrigger()) return
+      // If its cooldown, still run a LIGHT presence check occasionally
+      // (so idle sleep "no person for 5 min" stays accurate).
+      if (inCooldown) {
+        const pe = Math.max(1000, this.cfg.presenceEveryMs | 0)
+        if (now - this._lastPresenceCheckAt < pe) return
+        this._lastPresenceCheckAt = now
+      }
 
       const input = this._drawToSmallCanvas()
       if (!input) return
@@ -228,6 +246,20 @@ export class CameraEngine {
       }
 
       if (!bestPerson || bestPerson.score <= this.cfg.scoreThreshold) return
+
+      //presence signal always updates when a person is seen
+      this.lastPersonSeenAt = now
+
+      // wake hooks / presence hooks should fire even during cooldown
+      try {
+        this.onPresence({ score: bestPerson.score, predictions })
+      } catch (e) {
+        // ignore
+      }
+
+      // only trigger onPerson when NOT in cooldown + canTrigger()
+      if (inCooldown) return
+      if (!this.canTrigger()) return
 
       this.lastPersonDetectedTime = now
       console.log(

@@ -351,6 +351,10 @@ export class HologramEngine {
     this._isSleeping = false
     this._quietCheckAcc = 0
 
+    // multi-reason sleep flags (quiet-hours OR idle)
+    this._sleepQuiet = false
+    this._sleepIdle = false
+
     // talk state + fade
     this._isTalkingAnim = false
     this._fadeSeconds = 0.18
@@ -492,6 +496,9 @@ export class HologramEngine {
     this._isTalkingAnim = false
     this._isSleeping = false
     this._quietCheckAcc = 0
+    // reset sleep reason flags
+    this._sleepQuiet = false
+    this._sleepIdle = false
   }
 
   setViseme(visemeName, influence = 1) {
@@ -563,6 +570,16 @@ export class HologramEngine {
   }
 
   // ===================
+  // Public idle sleep control (used by CameraEngine + session state)
+  // ===================
+  setIdleSleep(shouldSleep) {
+    const next = !!shouldSleep
+    if (this._sleepIdle === next) return
+    this._sleepIdle = next
+    this._applySleepMode()
+  }
+
+  // ===================
   // Internal methods
   // ===================
   _tick() {
@@ -574,7 +591,10 @@ export class HologramEngine {
     this._quietCheckAcc += delta
     if (this._quietCheckAcc >= 10.0) {
       this._quietCheckAcc = 0
-      this._setSleepingMode(this._isQuietHoursGMT8(new Date()))
+
+      // quiet-hours is one sleep reason; final sleep is OR of reasons
+      this._sleepQuiet = this._isQuietHoursGMT8(new Date())
+      this._applySleepMode()
     }
 
     this.mixer?.update(delta)
@@ -744,7 +764,8 @@ export class HologramEngine {
     }
 
     // apply initial mode immediately (in case app starts at night)
-    this._setSleepingMode(this._isQuietHoursGMT8(new Date()))
+    this._sleepQuiet = this._isQuietHoursGMT8(new Date())
+    this._applySleepMode()
 
     return this.sleepModel
   }
@@ -762,7 +783,8 @@ export class HologramEngine {
     return h >= 19 || h < 7 // quite hour setup here..
   }
 
-  _setSleepingMode(shouldSleep) {
+  _applySleepMode() {
+    const shouldSleep = !!(this._sleepQuiet || this._sleepIdle)
     if (this._isSleeping === shouldSleep) return
     this._isSleeping = shouldSleep
 
