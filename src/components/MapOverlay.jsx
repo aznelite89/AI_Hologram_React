@@ -38,8 +38,8 @@ const MapOverlay = () => {
     if (!mapView) return
     startCoordRef.current = {
       __type: "coordinate",
-      latitude: 1.3330702148014424,
-      longitude: 103.7354149527466,
+      latitude: 1.33325408882863,
+      longitude: 103.73631647457708,
       floorId: "m_1eb00e35b7fea9c4",
       verticalOffset: 0.10000000149011612,
     }

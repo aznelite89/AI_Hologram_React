@@ -2,6 +2,7 @@ import { toIsoWithOffset } from "../util/common"
 import { getNewSession } from "../api/api"
 import { geminiAPIKey } from "../apikey"
 import { EXHIBITS } from "../constants/Exhibits"
+import { extractAssistantText } from "../util/speech"
 
 const DEFAULTS = {
   lang: "en-US",
@@ -298,11 +299,10 @@ export class SpeechEngine {
       const aiResponse = await this._callGemini({
         signal: this._abortController.signal,
       })
-
-      this._addToConversationHistory("assistant", aiResponse)
+      const aiRes = extractAssistantText(aiResponse)
+      this._addToConversationHistory("assistant", aiRes)
       this._setState({ voiceStatus: "Speaking..." })
-
-      const cleaned = this._sanitizeForSpeech(aiResponse)
+      const cleaned = this._sanitizeForSpeech(aiRes)
       await this._speakWithElevenLabs(cleaned)
 
       this._setState({
