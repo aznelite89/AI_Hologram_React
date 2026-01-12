@@ -17,7 +17,7 @@ const TopPanel = () => {
       </div>
 
       <video id="webcam-feed" autoPlay muted playsInline />
-      <div id="webcam-label">I'm Going Live Soon!</div>
+      <div id="webcam-label">AI can make mistakes, so double-check it</div>
     </>
   )
 }

@@ -49,7 +49,8 @@ const ActionBtnPanel = () => {
   const onMic = useCallback(() => {
     const engine = getSpeechEngine()
     engine?.toggleListening?.()
-  }, [])
+    if (!isConversationOpen) dispatch(toggleConversationOpen())
+  }, [isConversationOpen])
 
   const onToggleConversation = useCallback(() => {
     dispatch(toggleConversationOpen())
