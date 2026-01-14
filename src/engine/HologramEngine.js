@@ -323,6 +323,7 @@ export class HologramEngine {
     talkingAvatarUrl = "/male_talking.glb", // animation-only source
     sleepAvatarUrl = "/male_sleeping.glb",
     showStats = true,
+    onAvatarTap = null,
   } = {}) {
     this.backgroundUrl = backgroundUrl
     this.avatarUrl = avatarUrl
@@ -358,6 +359,13 @@ export class HologramEngine {
     // talk state + fade
     this._isTalkingAnim = false
     this._fadeSeconds = 0.18
+    // tap listen for speak
+    this.onAvatarTap = typeof onAvatarTap === "function" ? onAvatarTap : null
+    this._raycaster = new THREE.Raycaster()
+    this._pointerNdc = new THREE.Vector2()
+    this._tapTargets = []
+    this._tapCooldownUntil = 0
+    this._onPointerDown = this._onPointerDown.bind(this)
 
     this._raf = 0
     this._onResize = this._onResize.bind(this)
@@ -387,6 +395,12 @@ export class HologramEngine {
     this.renderer.shadowMap.type = THREE.BasicShadowMap
 
     this.containerEl.appendChild(this.renderer.domElement)
+
+    this.renderer.domElement.addEventListener(
+      "pointerdown",
+      this._onPointerDown,
+      { passive: true }
+    )
 
     this.camera = new THREE.PerspectiveCamera(
       39,
@@ -467,6 +481,13 @@ export class HologramEngine {
   destroy() {
     this.stop()
     window.removeEventListener("resize", this._onResize)
+
+    try {
+      this.renderer?.domElement?.removeEventListener(
+        "pointerdown",
+        this._onPointerDown
+      )
+    } catch {}
 
     if (this.renderer) {
       this.renderer.dispose()
@@ -685,6 +706,7 @@ export class HologramEngine {
 
     this.scene.add(this.model)
     this.animationGroup.add(this.model)
+    this._tapTargets = [this.model]
 
     this.morph = new MorphTargetManager(this.model)
     this.gaze = new RPMGazeManager(this.model, this.camera, this.morph)
@@ -823,5 +845,38 @@ export class HologramEngine {
         object.updateMatrix()
       }
     })
+  }
+  // tap detection..
+  _onPointerDown(e) {
+    if (!this.onAvatarTap) return
+    if (this._isSleeping) return
+
+    const now = Date.now()
+    if (now < this._tapCooldownUntil) return
+    this._tapCooldownUntil = now + 3000
+
+    if (!this._tapTargets?.length || !this.camera || !this.renderer) return
+
+    const canvas = this.renderer.domElement
+    const rect = canvas.getBoundingClientRect()
+
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX
+    const clientY = e.clientY ?? e.touches?.[0]?.clientY
+    if (typeof clientX !== "number" || typeof clientY !== "number") return
+
+    const x = ((clientX - rect.left) / rect.width) * 2 - 1
+    const y = -(((clientY - rect.top) / rect.height) * 2 - 1)
+    this._pointerNdc.set(x, y)
+
+    this._raycaster.setFromCamera(this._pointerNdc, this.camera)
+    const hits = this._raycaster.intersectObjects(this._tapTargets, true)
+
+    if (hits?.length) {
+      try {
+        this.onAvatarTap()
+      } catch (err) {
+        console.warn("onAvatarTap error:", err)
+      }
+    }
   }
 }

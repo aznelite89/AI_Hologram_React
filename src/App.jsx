@@ -58,6 +58,12 @@ export default function App() {
       backgroundUrl: "/SC_BG.glb",
       avatarUrl: "/Male_Waving_Final.glb",
       showStats: true,
+      onAvatarTap: () => {
+        const speech = speechRef.current
+        speech?.speakCoachLine?.(
+          "Hey! Press the green microphone button to talk to me!"
+        )
+      },
     })
     hologramRef.current = hologram
     setHologramEngine(hologram)

@@ -77,6 +77,8 @@ export class SpeechEngine {
     this._silencePromptDelayMs = 5000 // 5 seconds
     this._silencePromptText = "Ask me anything! Like 'Where are the dinosaurs?'"
     this._resumeListeningAfterPrompt = true
+    // speak cooldown when avatar being tapped
+    this._coachCooldownUntil = 0
 
     // bind handlers
     this._handleRecognitionResult = this._handleRecognitionResult.bind(this)
@@ -816,7 +818,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       window.speechSynthesis.speak(utterance)
     })
   }
-  // silence prompt timer after clicked mic button (kids UX enhamcement)
+  // silence prompt timer feature,after clicked mic button (kids UX enhamcement)
   _clearSilencePromptTimer() {
     if (this._silencePromptTimer) {
       clearTimeout(this._silencePromptTimer)
@@ -900,6 +902,37 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
 
       await this._speakCoachPrompt(this._silencePromptText)
     }, this._silencePromptDelayMs)
+  }
+  // for speaking after kids tapped 3D model.. (NO Gemini, NO conversation history, NO chat bubble)
+  async speakCoachLine(
+    text = "Press the green microphone button to talk to me!"
+  ) {
+    const line = this._sanitizeForSpeech(text)
+    if (!line) return
+    if (this.isProcessing || this.isSpeaking) return
+
+    //stop STT so it won't hear its own TTS
+    try {
+      if (this.recognition && this.isListening) this.recognition.stop()
+    } catch {}
+    this.isListening = false
+
+    this._setState({ isProcessing: true, voiceStatus: "Speaking..." })
+
+    try {
+      await this._speakWithElevenLabs(line)
+      this._setState({
+        voiceStatus: "Ready to talk - Click microphone to speak",
+      })
+    } catch (e) {
+      console.error("Coach line failed:", e)
+      this.onError(e)
+      this._setState({
+        voiceStatus: "Ready to talk - Click microphone to speak",
+      })
+    } finally {
+      this._setState({ isProcessing: false })
+    }
   }
 
   // Helpers
