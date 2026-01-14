@@ -70,6 +70,14 @@ export class SpeechEngine {
     //  abort controller for Gemini to avoid piling up requests
     this._abortController = null
 
+    // mic help prompt (kids UX)
+    this._silencePromptTimer = null
+    this._silencePromptCooldownUntil = 0
+    this._silencePromptCooldownMs = 8000 // don't spam; adjust 6–12s
+    this._silencePromptDelayMs = 5000 // 5 seconds
+    this._silencePromptText = "Ask me anything! Like 'Where are the dinosaurs?'"
+    this._resumeListeningAfterPrompt = true
+
     // bind handlers
     this._handleRecognitionResult = this._handleRecognitionResult.bind(this)
     this._handleRecognitionError = this._handleRecognitionError.bind(this)
@@ -127,6 +135,7 @@ export class SpeechEngine {
         this.isListening = true
         this._setVoiceStatus("Listening...")
         this._emitState()
+        this._armSilencePrompt()
       } catch (e) {
         this.onError(e)
       }
@@ -134,6 +143,7 @@ export class SpeechEngine {
   }
 
   stopListening() {
+    this._clearSilencePromptTimer()
     if (this.recognition && this.isListening) {
       try {
         this.recognition.stop()
@@ -186,6 +196,7 @@ export class SpeechEngine {
    * Stop TTS playback + stop recognition + abort in-flight Gemini.
    */
   stop() {
+    this._clearSilencePromptTimer()
     // Abort in-flight LLM
     try {
       this._abortController?.abort?.()
@@ -234,6 +245,7 @@ export class SpeechEngine {
       this.isListening = true
       this._setVoiceStatus("Listening...")
       this._emitState()
+      this._armSilencePrompt()
     }
 
     rec.onresult = this._handleRecognitionResult
@@ -244,6 +256,7 @@ export class SpeechEngine {
   }
 
   async _handleRecognitionResult(event) {
+    this._clearSilencePromptTimer()
     const transcript = Array.from(event.results)
       .map((r) => r[0])
       .map((r) => r.transcript)
@@ -257,6 +270,7 @@ export class SpeechEngine {
   }
 
   _handleRecognitionError(event) {
+    this._clearSilencePromptTimer()
     console.error("Speech recognition error:", event.error)
     this.isListening = false
     this._setVoiceStatus("Error: " + event.error)
@@ -264,6 +278,7 @@ export class SpeechEngine {
   }
 
   _handleRecognitionEnd() {
+    this._clearSilencePromptTimer()
     this.isListening = false
     if (!this.isProcessing && !this.isSpeaking) {
       this._setVoiceStatus("Ready to talk - Click microphone to speak")
@@ -801,6 +816,92 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       window.speechSynthesis.speak(utterance)
     })
   }
+  // silence prompt timer after clicked mic button (kids UX enhamcement)
+  _clearSilencePromptTimer() {
+    if (this._silencePromptTimer) {
+      clearTimeout(this._silencePromptTimer)
+      this._silencePromptTimer = null
+    }
+  }
+
+  /**
+   * Stop WebSpeech recognition WITHOUT changing voiceStatus to "Processing..."
+   * (Your stopListening() currently sets "Processing..." which is for real user turns.)
+   */
+  _softStopRecognition() {
+    if (this.recognition && this.isListening) {
+      try {
+        // stop() triggers onend; abort() is more immediate but sometimes noisy.
+        this.recognition.stop()
+      } catch (e) {}
+    }
+    this.isListening = false
+    // keep status as-is (don't overwrite to Processing)
+    this._emitState()
+  }
+
+  /**
+   * Speak a coaching line via ElevenLabs WITHOUT adding to conversation.
+   * Also prevents STT from picking up the spoken prompt by pausing recognition.
+   */
+  async _speakCoachPrompt(text) {
+    const line = String(text || "").trim()
+    if (!line) return
+
+    if (this.isProcessing) return
+    if (this.isSpeaking) return
+
+    // Pause recognition so STT doesn't "hear" the prompt and treat it as user input
+    const wasListening = this.isListening
+    if (wasListening) this._softStopRecognition()
+
+    try {
+      // Keep UI in a "listening" vibe
+      this._setVoiceStatus("Listening...")
+      this._emitState()
+
+      await this._speakWithElevenLabs(line)
+    } finally {
+      // Resume listening after prompt (optional but recommended for kid UX)
+      if (wasListening && this._resumeListeningAfterPrompt) {
+        // Give a tiny delay so WebSpeech doesn't immediately capture the end of TTS
+        setTimeout(() => {
+          // only restart if we’re still idle
+          if (!this.isProcessing && !this.isSpeaking) {
+            this.startListening()
+          }
+        }, 250)
+      }
+    }
+  }
+
+  /**
+   * Arm a 2s timer: if still listening + silent, speak coaching prompt.
+   * Note: this uses _speakCoachPrompt (NOT sendText / _processUserMessage).
+   */
+  _armSilencePrompt() {
+    this._clearSilencePromptTimer()
+
+    const now = Date.now()
+    if (now < this._silencePromptCooldownUntil) return
+    if (!this.isListening) return
+    if (this.isProcessing || this.isSpeaking) return
+
+    this._silencePromptTimer = setTimeout(async () => {
+      this._silencePromptTimer = null
+
+      const now2 = Date.now()
+      if (!this.isListening) return
+      if (this.isProcessing || this.isSpeaking) return
+      if (now2 < this._silencePromptCooldownUntil) return
+
+      // cooldown first to avoid spam
+      this._silencePromptCooldownUntil = now2 + this._silencePromptCooldownMs
+
+      await this._speakCoachPrompt(this._silencePromptText)
+    }, this._silencePromptDelayMs)
+  }
+
   // Helpers
   async _loadDocumentContent() {
     try {
