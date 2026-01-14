@@ -1,0 +1,104 @@
+/* =========================
+   LISTENING BUTTON STYLES
+   ========================= */
+
+/* Bottom mic (chat panel) */
+#voice-mic-btn.voice-mic-btn.listening {
+  /* Don’t go red — go “listening” */
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25),
+    0 10px 25px rgba(34, 197, 94, 0.35);
+}
+
+/* Main mic (big button) */
+#btn-main-microphone.listening {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.22),
+    0 16px 40px rgba(34, 197, 94, 0.35);
+}
+
+/* =========================
+   MIC WAVE BASE (shared)
+   ========================= */
+
+.micwave {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 3px;
+
+  /* Default size = old working size (SMALL) */
+  height: 18px;
+  width: 26px;
+}
+
+.micwave .bar {
+  width: 3px;
+  height: 6px; /* base */
+  border-radius: 999px;
+  background: #fff;
+  opacity: 0.95;
+  transform-origin: bottom;
+}
+
+/* =========================
+   SIZE VARIANTS
+   ========================= */
+
+/* Keep bottom mic identical: MicWave default (no size class) is small */
+
+/* Large wave for main mic */
+.micwave.micwave--lg {
+  height: 34px;
+  width: 54px;
+  gap: 6px;
+}
+
+.micwave.micwave--lg .bar {
+  width: 6px;
+  height: 10px; /* base */
+}
+
+/* =========================
+   ANIMATION (original)
+   ========================= */
+
+/* Apply the SAME animation to BOTH buttons when listening */
+#voice-mic-btn.voice-mic-btn.listening .micwave .bar,
+#btn-main-microphone.listening .micwave .bar {
+  animation: micwave-bounce 900ms ease-in-out infinite;
+}
+
+/* Use your EXACT original stagger timings */
+#voice-mic-btn.voice-mic-btn.listening .micwave .b1,
+#btn-main-microphone.listening .micwave .b1 {
+  animation-delay: -700ms;
+}
+#voice-mic-btn.voice-mic-btn.listening .micwave .b2,
+#btn-main-microphone.listening .micwave .b2 {
+  animation-delay: -500ms;
+}
+#voice-mic-btn.voice-mic-btn.listening .micwave .b3,
+#btn-main-microphone.listening .micwave .b3 {
+  animation-delay: -300ms;
+}
+#voice-mic-btn.voice-mic-btn.listening .micwave .b4,
+#btn-main-microphone.listening .micwave .b4 {
+  animation-delay: -150ms;
+}
+#voice-mic-btn.voice-mic-btn.listening .micwave .b5,
+#btn-main-microphone.listening .micwave .b5 {
+  animation-delay: -50ms;
+}
+
+@keyframes micwave-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.6);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scaleY(1.8);
+    opacity: 1;
+  }
+}

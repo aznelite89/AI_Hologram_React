@@ -12,6 +12,7 @@ import FeedbackPanel from "./FeedbackPanel"
 import { resetFeedback } from "../slices/feedbackSlice"
 import MapButton from "./MapButton"
 import { Main } from "../constants/PageType"
+import MicWave from "./MicWave"
 
 const ActionBtnPanel = () => {
   const dispatch = useDispatch()
@@ -89,7 +90,7 @@ const ActionBtnPanel = () => {
             {isProcessing ? (
               <i className="fas fa-spinner fa-spin"></i>
             ) : isListening ? (
-              <i className="fas fa-microphone-slash"></i>
+              <MicWave active size="lg" />
             ) : (
               <i className="fas fa-microphone"></i>
             )}

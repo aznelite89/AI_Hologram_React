@@ -9,6 +9,8 @@ import React, {
 import { censorBadWords } from "../util/common"
 import { extractAssistantText, getLastNMessages } from "../util/speech"
 import OnScreenKeyboard from "./OnScreenKeyboard"
+import MicWave from "./MicWave"
+import "@nrs/css/mic.css"
 
 const ChatPanel = ({
   visible = [], // kept for API compatibility
@@ -153,7 +155,7 @@ const ChatPanel = ({
           <button
             type="button"
             id="voice-mic-btn"
-            className="voice-mic-btn"
+            className={"voice-mic-btn " + (isListening ? "listening" : "")}
             onClick={onPushToTalk}
             aria-disabled={isProcessing}
             data-disabled={isProcessing ? "1" : "0"}
@@ -161,7 +163,7 @@ const ChatPanel = ({
             {isProcessing ? (
               <i className="fas fa-spinner fa-spin"></i>
             ) : isListening ? (
-              <i className="fas fa-microphone-slash"></i>
+              <MicWave active />
             ) : (
               <i className="fas fa-microphone"></i>
             )}
