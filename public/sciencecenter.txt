@@ -43,8 +43,7 @@ Never state that $6 applies to Off-Peak for locals.
 Never state that locals and non-locals have the same price.
 
 MANDATORY CLARIFICATION:
-Before giving any ticket price, confirm:
-Visitor type (Singaporean/PR or No local)
+Before giving any ticket price, confirm whether Visitor type (Singaporean/PR or No local) then straight away tell them the prices.
 tell the prices directly if Visitor type is given
 
 
