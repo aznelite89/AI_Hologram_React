@@ -15,7 +15,7 @@ const DEFAULTS = {
   // ElevenLabs defaults
   elevenModelId: "eleven_flash_v2_5",
   elevenStability: 0.5,
-  elevenSimilarityBoost: 0.75,
+  elevenSimilarityBoost: 0.75
 }
 
 export class SpeechEngine {
@@ -45,7 +45,7 @@ export class SpeechEngine {
       apiKey:
         opts.elevenlabs?.apiKey ?? import.meta.env.VITE_ELEVENLABS_API_KEY,
       voiceId:
-        opts.elevenlabs?.voiceId ?? import.meta.env.VITE_ELEVENLABS_VOICE_ID,
+        opts.elevenlabs?.voiceId ?? import.meta.env.VITE_ELEVENLABS_VOICE_ID
     }
 
     this.cfg = { ...DEFAULTS, ...(opts.cfg || {}) }
@@ -79,6 +79,9 @@ export class SpeechEngine {
     this._resumeListeningAfterPrompt = true
     // speak cooldown when avatar being tapped
     this._coachCooldownUntil = 0
+    // mic debounce
+    this._lastMicTapAt = 0
+    this._micDebounceMs = 300 // debounce for double tap...
 
     // bind handlers
     this._handleRecognitionResult = this._handleRecognitionResult.bind(this)
@@ -112,11 +115,18 @@ export class SpeechEngine {
       isSpeaking: this.isSpeaking,
       voiceStatus: this.voiceStatus,
       sessionId: this.currentSession,
-      history: [...this.conversationHistory],
+      history: [...this.conversationHistory]
     }
   }
 
   async toggleListening() {
+    const now = Date.now()
+    if (now - this._lastMicTapAt < this._micDebounceMs) {
+      // ignore fast double / multi tap
+      return
+    }
+    this._lastMicTapAt = now
+
     if (this.isListening) {
       this.stopListening()
     } else {
@@ -172,7 +182,7 @@ export class SpeechEngine {
 
     this._setState({
       isProcessing: true,
-      voiceStatus: "Someone detected! Saying hello...",
+      voiceStatus: "Someone detected! Saying hello..."
     })
 
     try {
@@ -181,13 +191,13 @@ export class SpeechEngine {
       this._setState({ voiceStatus: "Speaking greeting..." })
       await this._speakWithElevenLabs(cleaned)
       this._setState({
-        voiceStatus: "Ready to talk - Click microphone to speak",
+        voiceStatus: "Ready to talk - Click microphone to speak"
       })
     } catch (e) {
       console.error("Greeting failed:", e)
       this.onError(e)
       this._setState({
-        voiceStatus: "Ready to talk - Click microphone to speak",
+        voiceStatus: "Ready to talk - Click microphone to speak"
       })
     } finally {
       this._setState({ isProcessing: false })
@@ -314,7 +324,7 @@ export class SpeechEngine {
       this._addToConversationHistory("user", transcript)
 
       const aiResponse = await this._callGemini({
-        signal: this._abortController.signal,
+        signal: this._abortController.signal
       })
       const aiRes = extractAssistantText(aiResponse)
       this._addToConversationHistory("assistant", aiRes)
@@ -323,14 +333,14 @@ export class SpeechEngine {
       await this._speakWithElevenLabs(cleaned)
 
       this._setState({
-        voiceStatus: "Ready to talk - Click microphone to speak",
+        voiceStatus: "Ready to talk - Click microphone to speak"
       })
     } catch (error) {
       if (error?.name === "AbortError") return
       console.error("❌ Error processing speech:", error)
       this.onError(error)
       this._setState({
-        voiceStatus: "Error occurred - Click microphone to try again",
+        voiceStatus: "Error occurred - Click microphone to try again"
       })
       await this._speakFallback(
         "I'm having technical difficulties. Could you please try again?"
@@ -353,7 +363,7 @@ export class SpeechEngine {
     this.conversationHistory.push({
       role,
       content,
-      timestamp: toIsoWithOffset(now),
+      timestamp: toIsoWithOffset(now)
     })
 
     // Limit history (keep similar behavior)
@@ -395,7 +405,7 @@ export class SpeechEngine {
     this.onConversation({
       visible,
       full: [...this.conversationHistory],
-      sessionId: this.currentSession,
+      sessionId: this.currentSession
     })
   }
   // Gemini
@@ -407,7 +417,7 @@ export class SpeechEngine {
       .map((msg) => ({
         role:
           msg.role === "avatar" || msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
+        parts: [{ text: msg.content }]
       }))
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.cfg.geminiModel}:generateContent?key=${geminiAPIKey}`
@@ -421,21 +431,21 @@ export class SpeechEngine {
         systemInstruction: { parts: [{ text: systemPrompt }] },
         generationConfig: {
           maxOutputTokens: this.cfg.geminiMaxTokens,
-          temperature: this.cfg.geminiTemperature,
+          temperature: this.cfg.geminiTemperature
         },
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
           {
             category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
+            threshold: "BLOCK_NONE"
           },
           {
             category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-      }),
+            threshold: "BLOCK_NONE"
+          }
+        ]
+      })
     })
 
     if (!resp.ok) {
@@ -640,7 +650,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
@@ -648,17 +658,17 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
           {
             role: "system",
             content:
-              "You are a snarky and curious AI tour guide at the Singapore Science Centre. Generate a short, natural greeting (1-2 sentences max). Make your greetings witty and comical.",
+              "You are a snarky and curious AI tour guide at the Singapore Science Centre. Generate a short, natural greeting (1-2 sentences max). Make your greetings witty and comical."
           },
           {
             role: "user",
             content:
-              "Someone just appeared in front of you. Greet them with a science joke or quip, direct them to press the green microphone button to talk to you, and scan the QR code that will appear shortly to bring you around the Science Centre on their mobile phones.",
-          },
+              "Someone just appeared in front of you. Greet them with a science joke or quip, direct them to press the green microphone button to talk to you, and scan the QR code that will appear shortly to bring you around the Science Centre on their mobile phones."
+          }
         ],
         max_tokens: 150,
-        temperature: 0.8,
-      }),
+        temperature: 0.8
+      })
     })
 
     if (!resp.ok) {
@@ -687,16 +697,16 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       headers: {
         Accept: "audio/mpeg",
         "Content-Type": "application/json",
-        "xi-api-key": apiKey,
+        "xi-api-key": apiKey
       },
       body: JSON.stringify({
         text,
         model_id: this.cfg.elevenModelId,
         voice_settings: {
           stability: this.cfg.elevenStability,
-          similarity_boost: this.cfg.elevenSimilarityBoost,
-        },
-      }),
+          similarity_boost: this.cfg.elevenSimilarityBoost
+        }
+      })
     })
 
     if (!resp.ok) {
@@ -922,13 +932,13 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     try {
       await this._speakWithElevenLabs(line)
       this._setState({
-        voiceStatus: "Ready to talk - Click microphone to speak",
+        voiceStatus: "Ready to talk - Click microphone to speak"
       })
     } catch (e) {
       console.error("Coach line failed:", e)
       this.onError(e)
       this._setState({
-        voiceStatus: "Ready to talk - Click microphone to speak",
+        voiceStatus: "Ready to talk - Click microphone to speak"
       })
     } finally {
       this._setState({ isProcessing: false })
@@ -980,7 +990,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       isProcessing: this.isProcessing,
       isSpeaking: this.isSpeaking,
       voiceStatus: this.voiceStatus,
-      sessionId: this.currentSession,
+      sessionId: this.currentSession
     })
   }
 }
