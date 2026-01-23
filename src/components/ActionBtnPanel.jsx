@@ -1,10 +1,7 @@
 import React, { useCallback, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import ChatPanel from "./ChatPanel"
-import {
-  resetConversation,
-  toggleConversationOpen,
-} from "../slices/speechSlice"
+import { resetConversation } from "../slices/speechSlice"
 import { getSpeechEngine } from "../engine/engineRegistry"
 import { ArrayEqual } from "../util/common"
 import QrButton from "./QrButton"
@@ -24,7 +21,7 @@ const ActionBtnPanel = () => {
     conversationVisible,
     conversationFull,
     sessionId,
-    pageType,
+    pageType
   ] = useSelector((state) => {
     const speechState = state.speech
     return [
@@ -35,7 +32,7 @@ const ActionBtnPanel = () => {
       speechState.get("conversationVisible"),
       speechState.get("conversationFull"),
       speechState.get("sessionId"),
-      state.common.get("pageType"),
+      state.common.get("pageType")
     ]
   }, ArrayEqual)
 
@@ -50,7 +47,6 @@ const ActionBtnPanel = () => {
   const onMic = useCallback(() => {
     const engine = getSpeechEngine()
     engine?.toggleListening?.()
-    if (!isConversationOpen) dispatch(toggleConversationOpen())
   }, [isConversationOpen])
 
   const onToggleConversation = useCallback(() => {
