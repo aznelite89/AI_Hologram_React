@@ -4,13 +4,15 @@ import React, {
   useMemo,
   useState,
   useEffect,
-  useRef,
+  useRef
 } from "react"
 import { censorBadWords } from "../util/common"
 import { extractAssistantText, getLastNMessages } from "../util/speech"
 import OnScreenKeyboard from "./OnScreenKeyboard"
 import MicWave from "./MicWave"
 import "@nrs/css/mic.css"
+import { useDispatch } from "react-redux"
+import { toggleConversationOpen } from "../slices/speechSlice"
 
 const ChatPanel = ({
   visible = [], // kept for API compatibility
@@ -19,10 +21,12 @@ const ChatPanel = ({
   isListening,
   isProcessing,
   isConversationOpen,
+  isKeyboardShow,
   onToggleConversation,
   onPushToTalk,
-  onSendText,
+  onSendText
 }) => {
+  const dispatch = useDispatch()
   const [text, setText] = useState("")
   const historyEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -58,6 +62,15 @@ const ChatPanel = ({
     [handleSend]
   )
 
+  const handleOnClickKeyboard = useCallback(() => {
+    dispatch(
+      toggleConversationOpen({
+        isKeyboardShow: true,
+        isConversationOpen: false
+      })
+    )
+  }, [dispatch])
+
   // filter out system, show last 3.
   const renderedMessages = useMemo(() => {
     const tail = getLastNMessages(full, 12)
@@ -82,7 +95,7 @@ const ChatPanel = ({
           msg?.get("id") ??
           `${msg?.get("role") ?? "msg"}-${idx}-${msg?.get("timestamp") ?? ""}`,
         className: isUser ? "chat-bubble user" : "chat-bubble assistant",
-        content: censorBadWords(displayText),
+        content: censorBadWords(displayText)
       }
     })
   }, [full])
@@ -90,7 +103,7 @@ const ChatPanel = ({
   // Auto-scroll only when panel is open
   useEffect(() => {
     if (!isConversationOpen) return
-    historyEndRef.current?.scrollIntoView({ behavior: "auto" })
+    historyEndRef?.current?.scrollIntoView({ behavior: "auto" })
   }, [renderedMessages.length, isConversationOpen])
 
   return (
@@ -138,6 +151,7 @@ const ChatPanel = ({
             disabled={isProcessing}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            onClick={handleOnClickKeyboard}
             // readOnly
           />
 
@@ -188,12 +202,12 @@ const ChatPanel = ({
             {isProcessing
               ? "Processing..."
               : isListening
-              ? "Listening..."
-              : "Start"}
+                ? "Listening..."
+                : "Start"}
           </button>
         </div>
       </div>
-      {isConversationOpen && (
+      {isConversationOpen && isKeyboardShow ? (
         <OnScreenKeyboard
           value={text}
           onChange={(next) => {
@@ -213,7 +227,7 @@ const ChatPanel = ({
             handleSend(msg)
           }}
         />
-      )}
+      ) : null}
     </div>
   )
 }

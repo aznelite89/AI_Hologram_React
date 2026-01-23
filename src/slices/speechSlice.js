@@ -9,6 +9,7 @@ const initialState = fromJS({
   conversationFull: [],
   sessionId: null,
   isConversationOpen: false,
+  isKeyboardShow: false
 })
 
 const speechSlice = createSlice({
@@ -18,7 +19,7 @@ const speechSlice = createSlice({
     setSpeechState: (state, action) => {
       return state.merge(
         fromJS({
-          ...action.payload,
+          ...action.payload
         })
       )
     },
@@ -27,7 +28,7 @@ const speechSlice = createSlice({
         fromJS({
           conversationVisible: action.payload.visible,
           conversationFull: action.payload.full,
-          sessionId: action.payload.sessionId ?? null,
+          sessionId: action.payload.sessionId ?? null
         })
       )
     },
@@ -36,21 +37,27 @@ const speechSlice = createSlice({
         fromJS({
           conversationVisible: [],
           conversationFull: [],
-          sessionId: null,
+          sessionId: null
         })
       )
     },
-    toggleConversationOpen: (state) => {
-      return state.update("isConversationOpen", (v) => !v)
-    },
-  },
+    toggleConversationOpen: (state, action) => {
+      return state
+        .merge(
+          fromJS({
+            ...action.payload
+          })
+        )
+        .update("isConversationOpen", (v) => !v)
+    }
+  }
 })
 
 export const {
   setSpeechState,
   setConversation,
   resetConversation,
-  toggleConversationOpen,
+  toggleConversationOpen
 } = speechSlice.actions
 
 export default speechSlice.reducer
