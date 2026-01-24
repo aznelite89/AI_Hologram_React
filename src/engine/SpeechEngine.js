@@ -492,6 +492,9 @@ ${JSON.stringify(EXHIBITS, null, 2)}
    - If multiple matches, choose the most likely and mention it in "reply".
 5. Never reply whether you can help me to navigate or go or heads to location if "nav" is null.
 
+LANGUAGE MANAGEMENT: 
+1. if user ask with specific language, please reply with respective same language full accordingly instead of english, not just translated hello.
+
 REFERENCE KNOWLEDGE:
 The following is your single source of truth for any questions related to the Singapore Science Center: 
 
