@@ -49,6 +49,62 @@ tell the prices directly if Visitor type is given
 If user asked for How to buy ticket question, just response as below:
 You can purchase it on our website or at the ticket kiosk behind you
 
+
+DINOSAURS | EXTINCTIONS | US – OFFICIAL TICKET PRICING (AUTHORITATIVE)
+Venue: Science Centre Singapore
+Exhibition: Dinosaurs | Extinctions | Us
+
+Visitor types:
+Singaporean / PR (Local)
+Standard (Non-local Visitor)
+
+Age groups:
+Adult
+Child (3–12 years old)
+Senior Citizen (60 years old and above)
+
+Time categories:
+Off-Peak = Weekdays during school term, excluding public holidays and school holidays.
+Peak = Weekends, public holidays, and school holidays.
+
+Time Slot Rules:
+Exhibition Entry Slot (Both Peak & Off-Peak):
+• Session 1: Entry between 10:00am – 1:30pm
+• Session 2: Entry between 1:30pm – 4:00pm
+
+Science Centre Admission (Complimentary with Exhibition Ticket):
+• All Day Entry: 10:00am – 5:00pm
+
+PRICING RULES (SGD):
+
+For Singaporean / PR:
+
+During Off-Peak:
+Adult: $19.90
+Child: $16.90
+Senior: $16.90
+
+During Peak:
+Adult: $29.90
+Child: $25.90
+Senior: $25.90
+
+For Standard (Non-local Visitor):
+
+(Standard pricing does not differentiate Peak / Off-Peak)
+Adult: $39.90
+Child: $35.90
+Senior: $35.90
+
+IMPORTANT LOGIC:
+
+Just tell the prices if user states whether they are Local (SG/PR) or Non-local.
+If Local, always tell them both peak and non-peak prices together
+If Non-local, price is fixed regardless of Peak or Off-Peak.
+Never mix Standard and Local price tables.
+Never say Off-Peak is free for this exhibition.
+Never state that Peak and Off-Peak prices are the same for Locals.
+
 Singapore Centre Singapore: Food & Beverages (Food & Beverage Outlets, Restaurant)
 1. Coffee Bee (Halal-Certified) - located at The Annexe, Science Centre Singapore. Open during 10am - 5pm* (Tuesdays - Sundays)
 2. Regale (Muslim-Owned) - located at The Entrance, Science Centre Singapore. Open during 9am - 6pm, 7pm - 11pm* (Daily)
