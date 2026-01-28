@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { useMap, Marker, useMapViewEvent } from "@mappedin/react-sdk"
 
 const YOU_ARE_HERE_NAME = "You're here"
@@ -6,6 +6,7 @@ const YOU_ARE_HERE_NAME = "You're here"
 const MapOverlay = () => {
   const { mapData, mapView } = useMap()
   const startCoordRef = useRef(null)
+  const [toast, setToast] = useState(null)
 
   const spaces = useMemo(() => {
     if (!mapData) return []
@@ -27,6 +28,11 @@ const MapOverlay = () => {
     return pois.filter((p) => p.id !== youAreHerePoi.id)
   }, [pois, youAreHerePoi])
 
+  const showToast = (msg) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
+
   useEffect(() => {
     if (!mapView) return
     spaces.forEach((space) => {
@@ -41,7 +47,7 @@ const MapOverlay = () => {
       latitude: 1.33325408882863,
       longitude: 103.73631647457708,
       floorId: "m_1eb00e35b7fea9c4",
-      verticalOffset: 0.10000000149011612,
+      verticalOffset: 0.10000000149011612
     }
 
     mapView.Camera.animateTo(
@@ -90,7 +96,10 @@ const MapOverlay = () => {
 
       const targetCoord = poiCoord || spaceCoord
       const targetName = poiCoord ? poiName : spaceName
-
+      if (clickedSpace?.doors?.length == 0) {
+        showToast("The space is inaccessible")
+        return
+      }
       if (
         !targetCoord ||
         !targetCoord.latitude ||
@@ -98,6 +107,7 @@ const MapOverlay = () => {
         !targetCoord.floorId
       ) {
         console.warn("No routable coord from click (POI or space).")
+        showToast("The space is inaccessible")
         return
       }
 
@@ -123,7 +133,7 @@ const MapOverlay = () => {
         try {
           directions = await mapView.getDirections({
             from: startCoordRef.current,
-            to: targetCoord,
+            to: targetCoord
           })
         } catch {
           directions = await mapView.getDirections(
@@ -131,9 +141,10 @@ const MapOverlay = () => {
             targetCoord
           )
         }
-        console.log("targetCoord: ", targetCoord)
+        // console.log("targetCoord: ", targetCoord)
         if (!directions) {
           console.warn("No directions returned.")
+          showToast("The space is inaccessible")
           return
         }
 
@@ -141,6 +152,7 @@ const MapOverlay = () => {
         mapView.Navigation.draw(directions)
       } catch (err) {
         console.error("Error while getting directions:", err)
+        showToast("The space is inaccessible")
       }
     },
     [mapView, pois]
@@ -164,7 +176,7 @@ const MapOverlay = () => {
               fontFamily: "sans-serif",
               fontSize: "11px",
               lineHeight: 1.2,
-              whiteSpace: "nowrap",
+              whiteSpace: "nowrap"
             }}
           >
             {space.name}
@@ -182,7 +194,7 @@ const MapOverlay = () => {
               fontFamily: "sans-serif",
               fontSize: "10px",
               lineHeight: 1.2,
-              whiteSpace: "nowrap",
+              whiteSpace: "nowrap"
             }}
           >
             {poi.name}
@@ -196,7 +208,7 @@ const MapOverlay = () => {
           options={{
             interactive: false,
             placement: "right",
-            rank: "always-visible",
+            rank: "always-visible"
           }}
         >
           <div className="you-here">
@@ -205,6 +217,30 @@ const MapOverlay = () => {
           </div>
         </Marker>
       ) : null}
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            background: "rgba(0,0,0,0.9)",
+            color: "#fff",
+            padding: "28px 48px",
+            borderRadius: "24px",
+            fontSize: "28px",
+            fontWeight: "700",
+            textAlign: "center",
+            zIndex: 9999,
+            pointerEvents: "none",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
+            letterSpacing: "0.3px",
+            animation: "kioskToastPop 0.25s ease-out"
+          }}
+        >
+          🚫 The space is inaccessible
+        </div>
+      )}
     </>
   )
 }

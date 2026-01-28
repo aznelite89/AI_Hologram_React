@@ -79,6 +79,18 @@
   color: #fff;
   padding: 6px 10px;
   border-radius: 999px;
-  font: 600 12px/1 system-ui, sans-serif;
+  font:
+    600 12px/1 system-ui,
+    sans-serif;
   white-space: nowrap;
+}
+@keyframes kioskToastPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
