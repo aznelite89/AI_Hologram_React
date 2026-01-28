@@ -36,7 +36,6 @@ const ChatPanel = ({
     () => [
       { code: "en-US", label: "English (US)" },
       { code: "zh-CN", label: "中文（普通话-中国）" },
-      { code: "zh-TW", label: "中文（繁體-台灣）" },
       { code: "ms-MY", label: "Bahasa Melayu (MY)" },
       { code: "ta-IN", label: "தமிழ் (IN)" },
       { code: "ja-JP", label: "日本語" },
