@@ -74,7 +74,7 @@ export class SpeechEngine {
     this._silencePromptTimer = null
     this._silencePromptCooldownUntil = 0
     this._silencePromptCooldownMs = 8000 // don't spam; adjust 6–12s
-    this._silencePromptDelayMs = 5000 // 5 seconds
+    this._silencePromptDelayMs = 6000 // 5 seconds to 6 sec
     this._silencePromptText = "Ask me anything! Like 'Where are the dinosaurs?'"
     this._resumeListeningAfterPrompt = true
     // speak cooldown when avatar being tapped
@@ -82,6 +82,9 @@ export class SpeechEngine {
     // mic debounce
     this._lastMicTapAt = 0
     this._micDebounceMs = 300 // debounce for double tap...
+    // speaking guard (prevents race / overlap)
+    this._speakSeq = 0
+    this._activeSpeakId = 0
 
     // bind handlers
     this._handleRecognitionResult = this._handleRecognitionResult.bind(this)
@@ -703,76 +706,87 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
   }
   // TTS (ElevenLabs) + lips
   async _speakWithElevenLabs(text) {
+    const line = String(text || "").trim()
+    if (!line) return
+    // If already speaking, ignore OR interrupt — pick one behavior.
+    // For kiosk, interrupting is usually better UX:
+    // (will stop old audio anyway in _beginSpeaking)
+    const speakId = ++this._speakSeq
+    this._activeSpeakId = speakId
+    //Reserve speaking immediately (fixes race)
+    this._beginSpeaking()
+
     const { apiKey, voiceId } = this.elevenlabs
-    if (!apiKey || !voiceId) {
-      console.warn(
-        "ElevenLabs missing key/voiceId; falling back to browser TTS"
-      )
-      await this._speakFallback(text)
-      return
-    }
+    try {
+      if (!apiKey || !voiceId) {
+        console.warn(
+          "ElevenLabs missing key/voiceId; falling back to browser TTS"
+        )
+        await this._speakFallback(line)
+        return
+      }
 
-    const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: {
-        Accept: "audio/mpeg",
-        "Content-Type": "application/json",
-        "xi-api-key": apiKey
-      },
-      body: JSON.stringify({
-        text,
-        model_id: this.cfg.elevenModelId,
-        voice_settings: {
-          stability: this.cfg.elevenStability,
-          similarity_boost: this.cfg.elevenSimilarityBoost
-        }
+      const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Accept: "audio/mpeg",
+          "Content-Type": "application/json",
+          "xi-api-key": apiKey
+        },
+        body: JSON.stringify({
+          text: line,
+          model_id: this.cfg.elevenModelId,
+          voice_settings: {
+            stability: this.cfg.elevenStability,
+            similarity_boost: this.cfg.elevenSimilarityBoost
+          }
+        })
       })
-    })
 
-    if (!resp.ok) {
-      const errorText = await resp.text()
-      throw new Error(`ElevenLabs API error: ${resp.status} - ${errorText}`)
+      if (!resp.ok) {
+        const errorText = await resp.text()
+        throw new Error(`ElevenLabs API error: ${resp.status} - ${errorText}`)
+      }
+
+      // If a newer speak started while we were fetching, abandon this one
+      if (this._activeSpeakId !== speakId) return
+
+      const audioBlob = await resp.blob()
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error("Received empty audio blob from ElevenLabs")
+      }
+
+      // If a newer speak started while we were decoding, abandon this one
+      if (this._activeSpeakId !== speakId) return
+
+      const audioUrl = URL.createObjectURL(audioBlob)
+      const audio = new Audio(audioUrl)
+      this._currentAudio = audio
+
+      // lips + animation
+      this._startLipsWhileSpeaking(audio)
+      this.hologram?.startTalkingAnimation?.()
+
+      await audio.play()
+
+      await new Promise((resolve, reject) => {
+        audio.onended = resolve
+        audio.onerror = reject
+      })
+
+      // Only clean up if still current
+      if (this._activeSpeakId === speakId) {
+        this._stopLips()
+        this.hologram?.closeMouth?.()
+        this.hologram?.stopTalkingAnimation?.()
+        URL.revokeObjectURL(audioUrl)
+        this._currentAudio = null
+      }
+    } finally {
+      // Only unset speaking if still the latest speak
+      this._endSpeakingIfCurrent(speakId)
     }
-
-    const audioBlob = await resp.blob()
-    if (!audioBlob || audioBlob.size === 0) {
-      throw new Error("Received empty audio blob from ElevenLabs")
-    }
-
-    const audioUrl = URL.createObjectURL(audioBlob)
-    const audio = new Audio(audioUrl)
-    this._currentAudio = audio
-    // mark speaking + emit once so App/camera gating can react
-    this.isSpeaking = true
-    this._emitState()
-    // Start naive lips while speaking
-    this._startLipsWhileSpeaking(audio)
-    // start talking animation
-    this.hologram?.startTalkingAnimation?.()
-    await audio.play()
-    // if stop() was pressed immediately, stop talk and lips ani immediately..
-    if (!this._currentAudio) {
-      this._stopLips()
-      this.hologram?.stopTalkingAnimation?.()
-      this.isSpeaking = false
-      this._emitState()
-      return
-    }
-
-    await new Promise((resolve, reject) => {
-      audio.onended = resolve
-      audio.onerror = reject
-    })
-
-    this._stopLips()
-    this.hologram?.closeMouth?.()
-    this.hologram?.stopTalkingAnimation?.()
-
-    URL.revokeObjectURL(audioUrl)
-    this._currentAudio = null
-    this.isSpeaking = false
-    this._emitState()
   }
 
   _startLipsWhileSpeaking(audio) {
@@ -989,6 +1003,26 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
 
   _setVoiceStatus(message) {
     this.voiceStatus = message
+  }
+
+  _beginSpeaking() {
+    // cancel any "silence prompt" that could fire mid-speak
+    this._clearSilencePromptTimer()
+
+    // stop STT so it won't re-arm timers or hear audio
+    this._softStopRecognition()
+
+    // stop any existing audio to prevent overlap
+    this._stopAudio(true)
+
+    this.isSpeaking = true
+    this._emitState()
+  }
+
+  _endSpeakingIfCurrent(speakId) {
+    if (this._activeSpeakId !== speakId) return
+    this.isSpeaking = false
+    this._emitState()
   }
 
   // Batch updates and emit once
