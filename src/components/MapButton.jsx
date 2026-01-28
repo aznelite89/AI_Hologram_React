@@ -1,5 +1,6 @@
 import React from "react"
 import mapIcon from "@nrs/assets/img/find_map.png"
+import backIcon from "@nrs/assets/img/back.png"
 import { useDispatch } from "react-redux"
 import { setPageType } from "../slices/commonSlice"
 import { useSelector } from "react-redux"
@@ -22,7 +23,12 @@ const MapButton = () => {
         dispatch(setPageType({ pageType: updatedVal }))
       }}
     >
-      <img src={mapIcon} height={110} width={110} alt="Map" />
+      <img
+        src={selectedPageType == Main ? mapIcon : backIcon}
+        height={110}
+        width={110}
+        alt="Map"
+      />
     </button>
   )
 }
