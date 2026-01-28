@@ -15,6 +15,7 @@ import { useDispatch } from "react-redux"
 import { toggleConversationOpen } from "../slices/speechSlice"
 import LanguagePickerPopover from "./LanguagePickerPopover"
 import { setLanguage } from "../slices/commonSlice"
+import langIcon from "@nrs/assets/img/lang.png"
 
 const ChatPanel = ({
   visible = [], // kept for API compatibility
@@ -133,7 +134,7 @@ const ChatPanel = ({
         ref={langBtnRef}
         onClick={() => setLangOpen((v) => !v)}
       >
-        <img src="/src/assets/img/lang.png" alt="Language" />
+        <img src={langIcon} height={110} width={110} alt="Language" />
       </button>
 
       <LanguagePickerPopover
