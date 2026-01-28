@@ -7,12 +7,12 @@ import { SpeechEngine } from "./engine/SpeechEngine.js"
 import {
   setSpeechState,
   setConversation,
-  resetConversation,
+  resetConversation
 } from "./slices/speechSlice"
 import {
   setCameraEngine,
   setHologramEngine,
-  setSpeechEngine,
+  setSpeechEngine
 } from "./engine/engineRegistry"
 import { CameraEngine } from "./engine/CameraEngine"
 import KioskGuard from "./kiosk/KioskGuard.js"
@@ -27,8 +27,12 @@ import { resetFeedback } from "./slices/feedbackSlice.js"
 
 export default function App() {
   const dispatch = useDispatch()
-  const [pageType, conversation] = useSelector((state) => {
-    return [state.common.get("pageType"), state.speech.get("conversationFull")]
+  const [pageType, conversation, language] = useSelector((state) => {
+    return [
+      state.common.get("pageType"),
+      state.speech.get("conversationFull"),
+      state.common.get("language")
+    ]
   }, ArrayEqual)
 
   const hologramRef = useRef(null)
@@ -63,7 +67,7 @@ export default function App() {
         speech?.speakCoachLine?.(
           "Hey! Press the green microphone button to talk to me!"
         )
-      },
+      }
     })
     hologramRef.current = hologram
     setHologramEngine(hologram)
@@ -122,6 +126,7 @@ export default function App() {
         // 2) init speech
         const speech = new SpeechEngine({
           hologram,
+          cfg: { lang: language || "en-US" },
           // buffer + throttle; do NOT dispatch immediately
           onState: (s) => {
             if (cancelled) return
@@ -145,7 +150,7 @@ export default function App() {
             scheduleFlush()
           },
 
-          onError: (e) => console.error("SpeechEngine error:", e),
+          onError: (e) => console.error("SpeechEngine error:", e)
         })
 
         speechRef.current = speech
@@ -172,7 +177,7 @@ export default function App() {
             // avoid piling up greetings if detection fires repeatedly
             await speech?.speakGreeting?.()
           },
-          onError: (e) => console.error("CameraEngine error:", e),
+          onError: (e) => console.error("CameraEngine error:", e)
         })
 
         cameraRef.current = camera
@@ -212,6 +217,12 @@ export default function App() {
       hologramRef.current = null
     }
   }, [dispatch])
+
+  useEffect(() => {
+    const speech = speechRef.current
+    if (!speech) return
+    speech.setLanguage?.(language || "en-US")
+  }, [language])
 
   useEffect(() => {
     const t = setInterval(() => window.__KIOSK_PING__?.(), 20000)
@@ -267,7 +278,7 @@ export default function App() {
     isBlocked: () => {
       const s = speechRef.current?.getState?.()
       return !!(s?.isListening || s?.isProcessing || s?.isSpeaking)
-    },
+    }
   })
 
   return (

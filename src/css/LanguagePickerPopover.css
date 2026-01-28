@@ -1,0 +1,134 @@
+.lpOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647; /* max now.. if working and stablel liao then can change to 9999 */
+  pointer-events: none;
+}
+
+/* The panel itself */
+.lpPanel {
+  position: fixed;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  pointer-events: auto;
+
+  border-radius: 16px;
+  padding: 14px;
+
+  /* Figma-ish glass card */
+  background: rgba(11, 24, 44, 0.72);
+  backdrop-filter: blur(10px);
+
+  border: 1px solid rgba(255, 229, 87, 0.45);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Arial,
+    sans-serif;
+}
+
+.lpPanel,
+.lpPanel * {
+  box-sizing: border-box;
+}
+
+.lpHeader {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 10px;
+}
+
+/* Selected bar (looks like a dropdown input) */
+.lpSelected {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 229, 87, 0.55);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.lpSelectedText {
+  min-width: 0;
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lpChevron {
+  opacity: 0.9;
+}
+
+/* Scroll list */
+.lpList {
+  margin-top: 10px;
+  border-radius: 12px;
+  overflow: auto;
+  max-height: 320px;
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Each row */
+.lpItem {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lpItem:last-child {
+  border-bottom: none;
+}
+
+.lpItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.lpItem.isActive {
+  background: rgba(255, 229, 87, 0.12);
+}
+
+.lpItemLabel {
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.lpCheck {
+  font-size: 16px;
+  color: #ffe557; /* yellow-ish */
+}
+
+.lpCheckPlaceholder {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+}

@@ -13,6 +13,8 @@ import MicWave from "./MicWave"
 import "@nrs/css/mic.css"
 import { useDispatch } from "react-redux"
 import { toggleConversationOpen } from "../slices/speechSlice"
+import LanguagePickerPopover from "./LanguagePickerPopover"
+import { setLanguage } from "../slices/commonSlice"
 
 const ChatPanel = ({
   visible = [], // kept for API compatibility
@@ -30,6 +32,21 @@ const ChatPanel = ({
   const [text, setText] = useState("")
   const historyEndRef = useRef(null)
   const inputRef = useRef(null)
+  const LANGUAGES = useMemo(
+    () => [
+      { code: "en-US", label: "English (US)" },
+      { code: "zh-CN", label: "中文（普通话-中国）" },
+      { code: "zh-TW", label: "中文（繁體-台灣）" },
+      { code: "ms-MY", label: "Bahasa Melayu (MY)" },
+      { code: "ta-IN", label: "தமிழ் (IN)" },
+      { code: "ja-JP", label: "日本語" },
+      { code: "ko-KR", label: "한국어" }
+    ],
+    []
+  )
+  const langBtnRef = useRef(null)
+  const [langOpen, setLangOpen] = useState(false)
+  const [lang, setLang] = useState("en-US")
 
   const handleChange = useCallback((e) => {
     setText(e.target.value)
@@ -106,8 +123,31 @@ const ChatPanel = ({
     historyEndRef?.current?.scrollIntoView({ behavior: "auto" })
   }, [renderedMessages.length, isConversationOpen])
 
+  // useEffect(() => {
+  //   if (isConversationOpen) setLangOpen(false)
+  // }, [isConversationOpen])
+
   return (
     <div id="conversation-container">
+      <button
+        id="btn-language"
+        ref={langBtnRef}
+        onClick={() => setLangOpen((v) => !v)}
+      >
+        <img src="/src/assets/img/lang.png" alt="Language" />
+      </button>
+
+      <LanguagePickerPopover
+        open={langOpen}
+        anchorRef={langBtnRef}
+        languages={LANGUAGES}
+        value={lang}
+        onChange={(code) => {
+          setLang(code)
+          dispatch(setLanguage({ language: code }))
+        }}
+        onClose={() => setLangOpen(false)}
+      />
       <button id="btn-view-conversation" onClick={onToggleConversation}>
         <span>
           <svg

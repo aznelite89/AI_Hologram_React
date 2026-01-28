@@ -119,6 +119,23 @@ export class SpeechEngine {
     }
   }
 
+  setLanguage(lang) {
+    const next = String(lang || "").trim()
+    if (!next) return
+    if (this.cfg.lang === next) return
+
+    this.cfg.lang = next
+
+    // Update WebSpeech immediately (so next startListening uses new lang)
+    if (this.recognition) {
+      console.log("updating recognition language: ", next)
+      this.recognition.lang = next
+    }
+
+    // Optional: if your system prompt behavior depends on language, refresh cache
+    // this._systemPrompt = this._buildSystemPrompt()
+  }
+
   async toggleListening() {
     const now = Date.now()
     if (now - this._lastMicTapAt < this._micDebounceMs) {
