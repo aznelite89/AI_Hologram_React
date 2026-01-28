@@ -97,7 +97,7 @@ const MapOverlay = () => {
       const targetCoord = poiCoord || spaceCoord
       const targetName = poiCoord ? poiName : spaceName
       if (clickedSpace?.doors?.length == 0) {
-        showToast("The space is inaccessible")
+        showToast("Restricted Area")
         return
       }
       if (
@@ -107,7 +107,7 @@ const MapOverlay = () => {
         !targetCoord.floorId
       ) {
         console.warn("No routable coord from click (POI or space).")
-        showToast("The space is inaccessible")
+        showToast("Restricted Area")
         return
       }
 
@@ -144,7 +144,7 @@ const MapOverlay = () => {
         // console.log("targetCoord: ", targetCoord)
         if (!directions) {
           console.warn("No directions returned.")
-          showToast("The space is inaccessible")
+          showToast("Restricted Area")
           return
         }
 
@@ -152,7 +152,7 @@ const MapOverlay = () => {
         mapView.Navigation.draw(directions)
       } catch (err) {
         console.error("Error while getting directions:", err)
-        showToast("The space is inaccessible")
+        showToast("Restricted Area")
       }
     },
     [mapView, pois]
@@ -238,7 +238,7 @@ const MapOverlay = () => {
             animation: "kioskToastPop 0.25s ease-out"
           }}
         >
-          🚫 The space is inaccessible
+          🚫 Restricted Area
         </div>
       )}
     </>
