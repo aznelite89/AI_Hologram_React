@@ -85,6 +85,8 @@ export class SpeechEngine {
     // speaking guard (prevents race / overlap)
     this._speakSeq = 0
     this._activeSpeakId = 0
+    // for prevent speech overlapping
+    this._ttsAbortController = null
 
     // bind handlers
     this._handleRecognitionResult = this._handleRecognitionResult.bind(this)
@@ -328,9 +330,9 @@ export class SpeechEngine {
       return
     }
     if (this.isSpeaking) {
-      // don’t start another turn while TTS is playing
-      console.log("Currently speaking, ignoring new input")
-      return
+      // interrupt current speech and continue
+      this._stopAudio(true)
+      this.isSpeaking = false
     }
     // Abort any in-flight request (prevents queueing + stale updates)
     try {
@@ -708,15 +710,20 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
   async _speakWithElevenLabs(text) {
     const line = String(text || "").trim()
     if (!line) return
-    // If already speaking, ignore OR interrupt — pick one behavior.
-    // For kiosk, interrupting is usually better UX:
-    // (will stop old audio anyway in _beginSpeaking)
+
     const speakId = ++this._speakSeq
     this._activeSpeakId = speakId
-    //Reserve speaking immediately (fixes race)
+    // Reserve speaking immediately + interrupt any existing audio/request
     this._beginSpeaking()
 
     const { apiKey, voiceId } = this.elevenlabs
+    // create a new abort controller for THIS request
+    const controller = new AbortController()
+    this._ttsAbortController = controller
+
+    let audioUrl = null
+    let audio = null
+
     try {
       if (!apiKey || !voiceId) {
         console.warn(
@@ -729,6 +736,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`
       const resp = await fetch(url, {
         method: "POST",
+        signal: controller.signal,
         headers: {
           Accept: "audio/mpeg",
           "Content-Type": "application/json",
@@ -743,16 +751,19 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
           }
         })
       })
+      // If its aborted because a newer speak started, exit quietly
+      if (controller.signal.aborted) return
 
       if (!resp.ok) {
         const errorText = await resp.text()
         throw new Error(`ElevenLabs API error: ${resp.status} - ${errorText}`)
       }
-
-      // If a newer speak started while we were fetching, abandon this one
+      // If a newer speak started while its fetching, abandon this one
       if (this._activeSpeakId !== speakId) return
 
       const audioBlob = await resp.blob()
+      // If we were aborted mid-blob, exit quietly
+      if (controller.signal.aborted) return
       if (!audioBlob || audioBlob.size === 0) {
         throw new Error("Received empty audio blob from ElevenLabs")
       }
@@ -760,8 +771,8 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       // If a newer speak started while we were decoding, abandon this one
       if (this._activeSpeakId !== speakId) return
 
-      const audioUrl = URL.createObjectURL(audioBlob)
-      const audio = new Audio(audioUrl)
+      audioUrl = URL.createObjectURL(audioBlob)
+      audio = new Audio(audioUrl)
       this._currentAudio = audio
 
       // lips + animation
@@ -774,18 +785,37 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
         audio.onended = resolve
         audio.onerror = reject
       })
-
-      // Only clean up if still current
+    } catch (err) {
+      // Abort is expected when user interrupts quickly—don’t treat it as an error or fallback....
+      if (err?.name === "AbortError" || controller.signal.aborted) {
+        return
+      }
+      // Only fallback if this speak is still the active one
+      if (this._activeSpeakId === speakId) {
+        console.error("ElevenLabs TTS failed, falling back:", err)
+        await this._speakFallback(line)
+      }
+    } finally {
+      // cleanup audio URL + animation only if we are still the active speak
       if (this._activeSpeakId === speakId) {
         this._stopLips()
         this.hologram?.closeMouth?.()
         this.hologram?.stopTalkingAnimation?.()
-        URL.revokeObjectURL(audioUrl)
-        this._currentAudio = null
+        if (audioUrl) {
+          try {
+            URL.revokeObjectURL(audioUrl)
+          } catch {}
+        }
+        // clear only if still current
+        if (this._currentAudio === audio) {
+          this._currentAudio = null
+        }
+        this._endSpeakingIfCurrent(speakId)
       }
-    } finally {
-      // Only unset speaking if still the latest speak
-      this._endSpeakingIfCurrent(speakId)
+      // clear abort controller only if it's still ours
+      if (this._ttsAbortController === controller) {
+        this._ttsAbortController = null
+      }
     }
   }
 
@@ -819,22 +849,33 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
   }
 
   _stopAudio(force = false) {
+    // abort in-flight ElevenLabs fetch (critical to prevent overlap)
+    try {
+      this._ttsAbortController?.abort?.()
+    } catch (e) {}
+    this._ttsAbortController = null
+    // stop HTMLAudioElement
     try {
       if (this._currentAudio) {
         this._currentAudio.pause()
         this._currentAudio.currentTime = 0
+        this._currentAudio.src = "" // helps release decoder on some browsers
       }
     } catch (e) {}
     this._currentAudio = null
+    // stop lips + animations
     this._stopLips()
     if (force) this.hologram?.closeMouth?.()
+    this.hologram?.stopTalkingAnimation?.()
+    // stop Web Speech fallback if it was used
+    try {
+      window.speechSynthesis?.cancel?.()
+    } catch (e) {}
     // ensure state flips when stopping audio
     if (this.isSpeaking) {
       this.isSpeaking = false
       this._emitState()
     }
-    //  stop talking animation on forced stop
-    this.hologram?.stopTalkingAnimation?.()
   }
 
   async _speakFallback(text) {
