@@ -87,6 +87,23 @@ export class SpeechEngine {
     this._activeSpeakId = 0
     // for prevent speech overlapping
     this._ttsAbortController = null
+    // QR handoff nudge (speak once per conversation)
+    this._qrNudgeShown = false
+    this._qrNudgeDelayMs = 450 // tiny pause after first answer
+    this._qrNudgeTextByLang = {
+      "en-US":
+        "Want to keep going on your phone? Scan the QR on the left and I’ll follow you around with the map.",
+      "zh-CN":
+        "想用手机继续吗？扫左边的二维码，我就能在手机上带你逛，还能看地图。",
+      "ms-MY":
+        "Nak sambung dekat telefon? Imbas QR di sebelah kiri—saya boleh ikut anda dengan peta.",
+      "ta-IN":
+        "உங்கள் போனில் தொடரலாமா? இடது பக்க QR-ஐ ஸ்கேன் பண்ணுங்க—மேப்புடன் நான் உங்களை வழிநடத்துவேன்.",
+      "ja-JP":
+        "スマホで続ける？左のQRを読み取ってね。地図付きでそのまま案内するよ。",
+      "ko-KR":
+        "휴대폰으로 계속할래요? 왼쪽 QR을 스캔하면 지도랑 함께 제가 계속 안내해드릴게요."
+    }
 
     // bind handlers
     this._handleRecognitionResult = this._handleRecognitionResult.bind(this)
@@ -257,6 +274,7 @@ export class SpeechEngine {
   resetConversation() {
     this.conversationHistory = []
     this.currentSession = null
+    this._qrNudgeShown = false
     this._emitConversation()
     this._emitState()
     this.onSession({ sessionId: null })
@@ -353,7 +371,16 @@ export class SpeechEngine {
       this._setState({ voiceStatus: "Speaking..." })
       const cleaned = this._sanitizeForSpeech(aiRes)
       await this._speakWithElevenLabs(cleaned)
+      // QR handoff: after first answer, when QR becomes visible
+      if (!this._qrNudgeShown && this._shouldShowQrNow()) {
+        this._qrNudgeShown = true
 
+        // small natural pause so it doesn't feel like one long sentence
+        await new Promise((r) => setTimeout(r, this._qrNudgeDelayMs))
+
+        const qrLine = this._sanitizeForSpeech(this._getQrNudgeText())
+        await this._speakWithElevenLabs(qrLine)
+      }
       this._setState({
         voiceStatus: "Ready to talk - Click microphone to speak"
       })
@@ -903,6 +930,16 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       window.speechSynthesis.cancel()
       window.speechSynthesis.speak(utterance)
     })
+  }
+  _shouldShowQrNow() {
+    // Your UI shows QR when history length > chatCountThreshold
+    // After first user+assistant (len=2) and threshold=1 => true
+    return this.conversationHistory.length > this.cfg.chatCountThreshold
+  }
+
+  _getQrNudgeText() {
+    const code = String(this.cfg.lang || "en-US").trim()
+    return this._qrNudgeTextByLang[code] || this._qrNudgeTextByLang["en-US"]
   }
   // silence prompt timer feature,after clicked mic button (kids UX enhamcement)
   _clearSilencePromptTimer() {
