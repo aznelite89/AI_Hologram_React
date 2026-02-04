@@ -24,3 +24,17 @@
 
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.35));
 }
+
+@keyframes finger-nudge {
+  0%,
+  100% {
+    transform: translateY(-50%) translateX(0);
+  }
+  50% {
+    transform: translateY(-50%) translateX(10px);
+  }
+}
+
+.qr-handoff-finger {
+  animation: finger-nudge 1s ease-in-out infinite;
+}

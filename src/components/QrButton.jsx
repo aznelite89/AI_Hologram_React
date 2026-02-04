@@ -21,7 +21,7 @@ const QrButton = ({ session }) => {
   return (
     <button
       id="qr-button"
-      className={`${lastFeedback ? "ai-glow" : ""}`}
+      className={`${lastFeedback ? "ai-glow" : "ai-glow"}`}
       type="button"
     >
       <img src={qrSrc} alt="QR code" />
