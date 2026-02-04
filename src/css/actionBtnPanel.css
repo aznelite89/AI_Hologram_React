@@ -1,0 +1,26 @@
+.qr-handoff-anchor {
+  position: relative;
+  width: fit-content; /* width = QR button only */
+}
+
+/* Finger floats to the RIGHT of the QR button */
+.qr-handoff-finger {
+  position: absolute;
+
+  /* distance from QR */
+  left: calc(100% + 20px);
+
+  /* where it vertically points */
+  top: 55%;
+
+  transform: translateY(-50%);
+
+  width: 200px; /* 👈 BIG kiosk size */
+  height: auto;
+
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.35));
+}

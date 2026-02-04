@@ -13,6 +13,8 @@ import { resetFeedback } from "../slices/feedbackSlice"
 import MapButton from "./MapButton"
 import { Main } from "../constants/PageType"
 import MicWave from "./MicWave"
+import fingerGif from "@nrs/assets/img/finger-point.gif"
+import "@nrs/css/actionBtnPanel.css"
 
 const ActionBtnPanel = () => {
   const dispatch = useDispatch()
@@ -112,7 +114,14 @@ const ActionBtnPanel = () => {
         </div>
       ) : null}
       <div id="feedback-container">
-        {pageType == Main ? <QrButton session={sessionId} /> : null}
+        {pageType == Main ? (
+          <div className="qr-handoff-anchor">
+            <QrButton session={sessionId} />
+            {sessionId ? (
+              <img className="qr-handoff-finger" src={fingerGif} alt="" />
+            ) : null}
+          </div>
+        ) : null}
         <MapButton />
         {pageType == Main ? <FeedbackPanel sessionId={sessionId} /> : null}
       </div>
