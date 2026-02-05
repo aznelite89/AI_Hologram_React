@@ -24,27 +24,21 @@ export function extractAssistantText(raw) {
     if (typeof raw.reply === "string") return raw.reply
     if (typeof raw.text === "string") return raw.text
     if (typeof raw.content === "string") return raw.content
-
-    // Common nested shapes
     if (raw.message && typeof raw.message.reply === "string")
       return raw.message.reply
     if (raw.data && typeof raw.data.reply === "string") return raw.data.reply
-
-    // Last resort: don't show JSON to the user
     return ""
   }
 
   let s = String(raw).trim()
   if (!s) return ""
 
-  // 1) Remove leading "JSON" label lines (your screenshot case)
+  // Remove leading "JSON" label lines
   s = s.replace(/^\s*JSON\s*\n/i, "").trim()
 
-  // 2) Strip markdown fences if present
-  // handle full fenced blocks
+  //Strip markdown fences if present
   const fenced = s.match(/```(?:json|JSON)?\s*([\s\S]*?)\s*```/i)
   if (fenced?.[1]) s = fenced[1].trim()
-  // handle weird partial fences
   if (s.startsWith("```")) {
     s = s
       .replace(/^```(?:json|JSON)?\s*/i, "")
@@ -52,36 +46,68 @@ export function extractAssistantText(raw) {
       .trim()
   }
 
-  // After stripping, re-remove "JSON" again (sometimes inside fences)
   s = s.replace(/^\s*JSON\s*\n/i, "").trim()
 
-  // 3) If it’s JSON-ish, parse and extract reply
+  //try to extract a JSON object/array even if there is leading prose
+  // Strategy:
+  // - find first "{" and last "}" and try parse
+  // - if fails, find first "[" and last "]" and try parse
+  const tryParseJsonSlice = (text, openChar, closeChar) => {
+    const start = text.indexOf(openChar)
+    const end = text.lastIndexOf(closeChar)
+    if (start === -1 || end === -1 || end <= start) return null
+    const slice = text.slice(start, end + 1).trim()
+    try {
+      return { parsed: JSON.parse(slice), slice }
+    } catch {
+      return null
+    }
+  }
+
+  // if whole thing is JSON, parse directly (your original intent)
   const looksLikeJson =
     (s.startsWith("{") && s.endsWith("}")) ||
     (s.startsWith("[") && s.endsWith("]"))
 
-  if (!looksLikeJson) return s // IMPORTANT: return cleaned string, not raw
+  let parsedObj = null
 
-  try {
-    const parsed = JSON.parse(s)
+  if (looksLikeJson) {
+    try {
+      parsedObj = JSON.parse(s)
+    } catch {
+      // fall through to slice extraction
+    }
+  }
 
-    if (parsed && typeof parsed === "object") {
-      if (typeof parsed.reply === "string") return parsed.reply
-      if (typeof parsed.text === "string") return parsed.text
-      if (typeof parsed.content === "string") return parsed.content
+  if (parsedObj == null) {
+    // Try object slice first (most common)
+    const objTry = tryParseJsonSlice(s, "{", "}")
+    if (objTry) parsedObj = objTry.parsed
+  }
 
-      if (parsed.message && typeof parsed.message.reply === "string")
-        return parsed.message.reply
+  if (parsedObj == null) {
+    // Try array slice (less common)
+    const arrTry = tryParseJsonSlice(s, "[", "]")
+    if (arrTry) parsedObj = arrTry.parsed
+  }
 
-      // If it's still an object but no known text field:
-      // do NOT stringify to UI (prevents showing JSON again)
+  // If able to parse something, extract reply
+  if (parsedObj != null) {
+    if (typeof parsedObj === "string") return parsedObj
+    if (typeof parsedObj === "number" || typeof parsedObj === "boolean")
+      return String(parsedObj)
+
+    if (parsedObj && typeof parsedObj === "object") {
+      if (typeof parsedObj.reply === "string") return parsedObj.reply
+      if (typeof parsedObj.text === "string") return parsedObj.text
+      if (typeof parsedObj.content === "string") return parsedObj.content
+
+      if (parsedObj.message && typeof parsedObj.message.reply === "string")
+        return parsedObj.message.reply
       return ""
     }
-
-    // If parsed is primitive
-    return String(parsed ?? "")
-  } catch {
-    // Not valid JSON after all -> show cleaned
-    return s
   }
+
+  // nothing foud.. return cleaned prose
+  return s
 }
