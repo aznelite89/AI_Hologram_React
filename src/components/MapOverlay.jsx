@@ -56,6 +56,12 @@ const MapOverlay = () => {
     )
   }, [])
 
+  useEffect(() => {
+    if (!mapView) return
+    mapView.Camera.setMinZoomLevel(17.5)
+    mapView.Camera.setMaxZoomLevel(21)
+  }, [mapView])
+
   useMapViewEvent(
     "click",
     async (event) => {
