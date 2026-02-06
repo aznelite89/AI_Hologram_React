@@ -39,7 +39,7 @@ export default function App() {
   const speechRef = useRef(null)
   const cameraRef = useRef(null)
   // idle sleep state (no person 5min + no session)
-  const idleSleepAppliedRef = useRef(false)
+  // const idleSleepAppliedRef = useRef(false)
 
   // Throttle buffers (keep React out of hot path)
   const pendingSpeechStateRef = useRef(null)
@@ -166,13 +166,12 @@ export default function App() {
             return !(s?.isListening || s?.isProcessing || s?.isSpeaking)
           },
           // wake instantly whenever a person is seen (even during cooldown)
-          onPresence: () => {
-            if (idleSleepAppliedRef.current) {
-              idleSleepAppliedRef.current = false
-              hologramRef.current?.setIdleSleep?.(false)
-            }
-          },
-
+          // onPresence: () => {
+          //   if (idleSleepAppliedRef.current) {
+          //     idleSleepAppliedRef.current = false
+          //     hologramRef.current?.setIdleSleep?.(false)
+          //   }
+          // },
           onPerson: async () => {
             // avoid piling up greetings if detection fires repeatedly
             await speech?.speakGreeting?.()
@@ -230,40 +229,40 @@ export default function App() {
   }, [])
 
   // idle sleep decision loop (uses camera.lastPersonSeenAt, not greeting cooldown)
-  useEffect(() => {
-    const CHECK_EVERY_MS = 5000
-    const NO_PERSON_MS = 1 * 60 * 1000
+  // useEffect(() => {
+  //   const CHECK_EVERY_MS = 5000
+  //   const NO_PERSON_MS = 1 * 60 * 1000
 
-    const t = setInterval(() => {
-      const speech = speechRef.current
-      const holo = hologramRef.current
-      const cam = cameraRef.current
-      if (!speech || !holo || !cam) return
+  //   const t = setInterval(() => {
+  //     const speech = speechRef.current
+  //     const holo = hologramRef.current
+  //     const cam = cameraRef.current
+  //     if (!speech || !holo || !cam) return
 
-      const s = speech.getState?.() || {}
-      // no current session (you already reset session to null on inactivity)
-      const noSession = !s.sessionId
+  //     const s = speech.getState?.() || {}
+  //     // no current session (you already reset session to null on inactivity)
+  //     const noSession = !s.sessionId
 
-      // don't idle-sleep while system is mid-turn / speaking
-      const busy = !!(s.isListening || s.isProcessing || s.isSpeaking)
+  //     // don't idle-sleep while system is mid-turn / speaking
+  //     const busy = !!(s.isListening || s.isProcessing || s.isSpeaking)
 
-      const lastSeen = cam.lastPersonSeenAt || 0
-      const sinceStart = Date.now() - appStartedAtRef.current
-      const noPersonLongEnough = lastSeen
-        ? Date.now() - lastSeen >= NO_PERSON_MS
-        : sinceStart >= NO_PERSON_MS
+  //     const lastSeen = cam.lastPersonSeenAt || 0
+  //     const sinceStart = Date.now() - appStartedAtRef.current
+  //     const noPersonLongEnough = lastSeen
+  //       ? Date.now() - lastSeen >= NO_PERSON_MS
+  //       : sinceStart >= NO_PERSON_MS
 
-      const shouldIdleSleep =
-        noPersonLongEnough && noSession && !busy && conversation?.size == 0
+  //     const shouldIdleSleep =
+  //       noPersonLongEnough && noSession && !busy && conversation?.size == 0
 
-      if (shouldIdleSleep !== idleSleepAppliedRef.current) {
-        idleSleepAppliedRef.current = shouldIdleSleep
-        holo.setIdleSleep?.(shouldIdleSleep)
-      }
-    }, CHECK_EVERY_MS)
+  //     if (shouldIdleSleep !== idleSleepAppliedRef.current) {
+  //       idleSleepAppliedRef.current = shouldIdleSleep
+  //       holo.setIdleSleep?.(shouldIdleSleep)
+  //     }
+  //   }, CHECK_EVERY_MS)
 
-    return () => clearInterval(t)
-  }, [conversation])
+  //   return () => clearInterval(t)
+  // }, [conversation])
 
   useInactivityReset({
     enabled: true,
@@ -283,7 +282,7 @@ export default function App() {
 
   return (
     <>
-      <KioskGuard enabled={true} allowWheelInMap={pageType === Map} />
+      <KioskGuard enabled={false} allowWheelInMap={pageType === Map} />
       <KioskWatchdog enabled={true} />
       <EnginePageTypeController />
       {pageType == Main ? <TopPanel /> : null}
