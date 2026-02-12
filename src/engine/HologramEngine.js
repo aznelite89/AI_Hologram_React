@@ -323,7 +323,7 @@ export class HologramEngine {
     talkingAvatarUrl = "/male_talking.glb", // animation-only source
     sleepAvatarUrl = "/male_sleeping.glb",
     showStats = true,
-    onAvatarTap = null,
+    onAvatarTap = null
   } = {}) {
     this.backgroundUrl = backgroundUrl
     this.avatarUrl = avatarUrl
@@ -385,7 +385,7 @@ export class HologramEngine {
       powerPreference: "high-performance",
       precision: "lowp",
       stencil: false,
-      logarithmicDepthBuffer: false,
+      logarithmicDepthBuffer: false
     })
     console.log("LOW POWER DEVICE: ", PERF.LOW_POWER)
     console.log("PERF: ", PERF)
@@ -443,7 +443,7 @@ export class HologramEngine {
       roughness: 0.8,
       metalness: 0.2,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.5
     })
     const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial)
     groundMesh.rotation.x = -Math.PI / 2
@@ -580,11 +580,14 @@ export class HologramEngine {
       //fade talk -> awake
       this._talkAction.crossFadeTo(this._awakeAction, this._fadeSeconds, false)
       // stop talk after fade
-      setTimeout(() => {
-        try {
-          this._talkAction?.stop()
-        } catch (e) {}
-      }, Math.ceil(this._fadeSeconds * 1000) + 80)
+      setTimeout(
+        () => {
+          try {
+            this._talkAction?.stop()
+          } catch (e) {}
+        },
+        Math.ceil(this._fadeSeconds * 1000) + 80
+      )
     } catch (e) {
       // ignore
     }
