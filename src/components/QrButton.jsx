@@ -25,7 +25,7 @@ const QrButton = ({ session }) => {
       type="button"
     >
       <img src={qrSrc} alt="QR code" />
-      Scan to move to AI Guide App
+      Scan to bring me with you!
     </button>
   )
 }
