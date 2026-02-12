@@ -504,7 +504,7 @@ button:focus-visible {
   align-items: center;
   font-size: 20px;
   border: none;
-  max-width: 200px;
+  max-width: 300px;
   color: #ffe457;
   border-radius: 10px;
   cursor: pointer;
