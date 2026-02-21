@@ -126,6 +126,12 @@ const ChatPanel = ({
   // useEffect(() => {
   //   if (isConversationOpen) setLangOpen(false)
   // }, [isConversationOpen])
+  useEffect(() => {
+    if (full?.size === 0) {
+      setText("")
+      requestAnimationFrame(() => inputRef.current?.focus?.())
+    }
+  }, [full?.size])
 
   return (
     <div id="conversation-container">
