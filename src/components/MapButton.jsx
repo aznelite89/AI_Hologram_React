@@ -6,6 +6,7 @@ import { setPageType } from "../slices/commonSlice"
 import { useSelector } from "react-redux"
 import { ArrayEqual } from "../util/common"
 import { Main, Map } from "../constants/PageType"
+import { trackEvent } from "../util/analytics"
 
 const MapButton = () => {
   const dispatch = useDispatch()
@@ -18,6 +19,10 @@ const MapButton = () => {
       id="navigationBtn"
       className="action-btn kiosk-map-btn"
       onClick={() => {
+        trackEvent("find_map_click", {
+          screen_name: "home",
+          app_section: "hologram"
+        })
         const updatedVal = selectedPageType == Main ? Map : Main
         console.log("map button clicked: ", updatedVal)
         dispatch(setPageType({ pageType: updatedVal }))

@@ -1,5 +1,5 @@
 import { logEvent } from "firebase/analytics"
-import { getFirebaseAnalytics } from "../firebase"
+import { getFirebaseAnalytics } from "../api/firebase"
 
 export async function trackEvent(eventName, params = {}) {
   try {

@@ -16,6 +16,7 @@ import { toggleConversationOpen } from "../slices/speechSlice"
 import LanguagePickerPopover from "./LanguagePickerPopover"
 import { setLanguage } from "../slices/commonSlice"
 import langIcon from "@nrs/assets/img/lang.png"
+import { trackEvent } from "../util/analytics"
 
 const ChatPanel = ({
   visible = [], // kept for API compatibility
@@ -80,6 +81,10 @@ const ChatPanel = ({
   )
 
   const handleOnClickKeyboard = useCallback(() => {
+    trackEvent("keyboard_input_button_click", {
+      screen_name: "chat",
+      input_mode: "voice"
+    })
     dispatch(
       toggleConversationOpen({
         isKeyboardShow: true,
@@ -138,7 +143,13 @@ const ChatPanel = ({
       <button
         id="btn-language"
         ref={langBtnRef}
-        onClick={() => setLangOpen((v) => !v)}
+        onClick={() => {
+          trackEvent("language_selection_button_click", {
+            screen_name: "chat",
+            input_mode: "voice"
+          })
+          setLangOpen((v) => !v)
+        }}
       >
         <img src={langIcon} height={110} width={110} alt="Language" />
       </button>

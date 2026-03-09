@@ -15,6 +15,7 @@ import { Main } from "../constants/PageType"
 import MicWave from "./MicWave"
 import fingerGif from "@nrs/assets/img/finger-point.gif"
 import "@nrs/css/actionBtnPanel.css"
+import { trackEvent } from "../util/analytics"
 
 const ActionBtnPanel = () => {
   const dispatch = useDispatch()
@@ -44,6 +45,10 @@ const ActionBtnPanel = () => {
   }, ArrayEqual)
 
   const onReset = useCallback(() => {
+    trackEvent("reset_conversation_button_click", {
+      screen_name: "chat",
+      input_mode: "voice"
+    })
     const engine = getSpeechEngine()
     engine?.stop?.()
     engine?.resetConversation?.()
@@ -52,12 +57,20 @@ const ActionBtnPanel = () => {
   }, [dispatch])
 
   const onMic = useCallback(() => {
+    trackEvent("mic_button_click", {
+      screen_name: "chat",
+      input_mode: "voice"
+    })
     const engine = getSpeechEngine()
     engine?.toggleListening?.()
     if (!isConversationOpen) dispatch(toggleConversationOpen())
   }, [isConversationOpen])
 
   const onToggleConversation = useCallback(() => {
+    trackEvent("toggle_conversation_button_click", {
+      screen_name: "chat",
+      input_mode: "voice"
+    })
     dispatch(toggleConversationOpen({ isKeyboardShow: !isConversationOpen }))
   }, [dispatch, isConversationOpen])
 
