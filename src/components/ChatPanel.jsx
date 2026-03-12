@@ -55,6 +55,10 @@ const ChatPanel = ({
 
   const handleSend = useCallback(
     (overrideMsg) => {
+      trackEvent("user_typed_submited", {
+        screen_name: "chat",
+        input_mode: "voice"
+      })
       const msg = (overrideMsg ?? text).trim()
       if (!msg || isProcessing) return
 
@@ -81,10 +85,6 @@ const ChatPanel = ({
   )
 
   const handleOnClickKeyboard = useCallback(() => {
-    trackEvent("keyboard_input_button_click", {
-      screen_name: "chat",
-      input_mode: "voice"
-    })
     dispatch(
       toggleConversationOpen({
         isKeyboardShow: true,
