@@ -55,7 +55,7 @@ const ChatPanel = ({
 
   const handleSend = useCallback(
     (overrideMsg) => {
-      trackEvent("user_typed_submited", {
+      trackEvent("keyboard_input_button_click", {
         screen_name: "chat",
         input_mode: "voice"
       })
