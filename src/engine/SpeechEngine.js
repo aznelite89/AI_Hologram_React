@@ -11,7 +11,7 @@ const DEFAULTS = {
   chatCountThreshold: 3,
   geminiModel: "gemini-2.5-flash-lite",
   geminiMaxTokens: 350,
-  geminiTemperature: 0.6,
+  geminiTemperature: 0.3,
   // ElevenLabs defaults
   elevenModelId: "eleven_flash_v2_5",
   elevenStability: 0.5,
@@ -735,7 +735,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
           }
         ],
         max_tokens: 150,
-        temperature: 0.8
+        temperature: 0.4
       })
     })
 
