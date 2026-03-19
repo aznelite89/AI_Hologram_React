@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import ActionBtnPanel from "./components/ActionBtnPanel.jsx"
 import TopPanel from "./components/TopPanel/index.jsx"
@@ -27,6 +27,7 @@ import { resetFeedback } from "./slices/feedbackSlice.js"
 
 export default function App() {
   const dispatch = useDispatch()
+
   const [pageType, conversation, language] = useSelector((state) => {
     return [
       state.common.get("pageType"),
@@ -35,13 +36,22 @@ export default function App() {
     ]
   }, ArrayEqual)
 
+  const [cameraSignal, setCameraSignal] = useState({
+    hasPerson: false,
+    hasFace: false,
+    category: "unknown",
+    categoryScore: 0,
+    estimatedAge: null,
+    badgeTitle: "UNKNOWN",
+    badgeTone: "unknown",
+    metaText: "No visitor"
+  })
+
   const hologramRef = useRef(null)
   const speechRef = useRef(null)
   const cameraRef = useRef(null)
-  // idle sleep state (no person 5min + no session)
-  // const idleSleepAppliedRef = useRef(false)
+  const videoElRef = useRef(null)
 
-  // Throttle buffers (keep React out of hot path)
   const pendingSpeechStateRef = useRef(null)
   const lastSpeechStateRef = useRef(null)
 
@@ -50,8 +60,6 @@ export default function App() {
 
   const flushTimerRef = useRef(null)
   const lastFlushAtRef = useRef(0)
-
-  const appStartedAtRef = useRef(Date.now())
 
   useEffect(() => {
     let cancelled = false
@@ -69,19 +77,19 @@ export default function App() {
         )
       }
     })
+
     hologramRef.current = hologram
     setHologramEngine(hologram)
-    // -----------------------
-    // Throttled Redux flushing
-    // -----------------------
-    const FLUSH_MS = 250 // 4fps UI updates (good enough for kiosk indicators + chat)
+
+    const FLUSH_MS = 250
+
     const scheduleFlush = () => {
       if (flushTimerRef.current) return
+
       flushTimerRef.current = setTimeout(() => {
         flushTimerRef.current = null
         if (cancelled) return
 
-        // flush speechState (small primitives only)
         const ps = pendingSpeechStateRef.current
         if (ps) {
           pendingSpeechStateRef.current = null
@@ -92,13 +100,9 @@ export default function App() {
           }
         }
 
-        // flush conversation (avoid dispatch storms)
         const pc = pendingConversationRef.current
         if (pc) {
           pendingConversationRef.current = null
-
-          // If conversation object is recreated often, this still helps a lot:
-          // only dispatch when reference changes AND basic shape differs.
           const lastC = lastConversationRef.current
           const changed =
             pc !== lastC &&
@@ -118,71 +122,101 @@ export default function App() {
 
     ;(async () => {
       try {
-        // 1) init hologram
         await hologram.init({ containerEl })
         if (cancelled) return
         hologram.start()
 
-        // 2) init speech
         const speech = new SpeechEngine({
           hologram,
           cfg: { lang: language || "en-US" },
-          // buffer + throttle; do NOT dispatch immediately
           onState: (s) => {
             if (cancelled) return
-            // keep this SMALL. If SpeechEngine sends a big object, consider pruning it here.
             pendingSpeechStateRef.current = s
             scheduleFlush()
           },
-
           onConversation: (c) => {
             if (cancelled) return
             pendingConversationRef.current = c
             scheduleFlush()
           },
-
           onSession: ({ sessionId }) => {
             if (cancelled) return
-            // merge into pending speech state, still throttled
             const prev =
               pendingSpeechStateRef.current || lastSpeechStateRef.current || {}
             pendingSpeechStateRef.current = { ...prev, sessionId }
             scheduleFlush()
           },
-
           onError: (e) => console.error("SpeechEngine error:", e)
         })
 
         speechRef.current = speech
         setSpeechEngine(speech)
+
         await speech.init()
         if (cancelled) return
 
-        // 3) init camera
-        const videoEl = document.getElementById("webcam-feed")
         const camera = new CameraEngine({
+          cfg: {
+            detectEveryMs: 220,
+            presenceEveryMs: 1200,
+            cooldownMs: 750000,
+
+            cameraWidth: 640,
+            cameraHeight: 480,
+            facingMode: "user",
+
+            minDetectionConfidence: 0.65,
+            minSuppressionThreshold: 0.3,
+
+            presenceHistorySize: 6,
+            minStablePresenceVotes: 3,
+
+            signalChangeMinMs: 700,
+            requireKnownCategoryForGreeting: false
+          },
+
           canTrigger: () => {
             const s = speech.getState?.()
             return !(s?.isListening || s?.isProcessing || s?.isSpeaking)
           },
-          // wake instantly whenever a person is seen (even during cooldown)
-          // onPresence: () => {
-          //   if (idleSleepAppliedRef.current) {
-          //     idleSleepAppliedRef.current = false
-          //     hologramRef.current?.setIdleSleep?.(false)
-          //   }
-          // },
-          onPerson: async () => {
-            // avoid piling up greetings if detection fires repeatedly
+
+          onSignalChange: (next) => {
+            if (cancelled) return
+
+            setCameraSignal((prev) => {
+              const same =
+                prev.hasPerson === next.hasPerson &&
+                prev.hasFace === next.hasFace &&
+                prev.badgeTitle === next.badgeTitle &&
+                prev.badgeTone === next.badgeTone &&
+                prev.metaText === next.metaText &&
+                prev.category === next.category &&
+                prev.estimatedAge === next.estimatedAge
+
+              return same ? prev : next
+            })
+          },
+
+          onPerson: async (payload) => {
+            console.log("Greeting trigger:", payload.badgeTitle)
             await speech?.speakGreeting?.()
           },
-          onError: (e) => console.error("CameraEngine error:", e)
+
+          onState: (s) => {
+            console.log("[CameraEngine state]", s)
+          },
+
+          onError: (e) => {
+            console.error("CameraEngine error:", e)
+          }
         })
 
         cameraRef.current = camera
         setCameraEngine(camera)
-        await camera.init({ videoEl })
+
+        await camera.init({ videoEl: videoElRef.current })
         if (cancelled) return
+
         camera.start()
       } catch (e) {
         console.error("❌ App engine init failed:", e)
@@ -194,23 +228,27 @@ export default function App() {
       setSpeechEngine(null)
       setCameraEngine(null)
       setHologramEngine(null)
+
       if (flushTimerRef.current) {
         clearTimeout(flushTimerRef.current)
         flushTimerRef.current = null
       }
-      // Clear pending buffers
+
       pendingSpeechStateRef.current = null
       pendingConversationRef.current = null
 
       try {
         cameraRef.current?.destroy?.()
-      } catch (e) {}
+      } catch {}
+
       try {
         speechRef.current?.destroy?.()
-      } catch (e) {}
+      } catch {}
+
       try {
         hologramRef.current?.destroy?.()
-      } catch (e) {}
+      } catch {}
+
       cameraRef.current = null
       speechRef.current = null
       hologramRef.current = null
@@ -227,42 +265,6 @@ export default function App() {
     const t = setInterval(() => window.__KIOSK_PING__?.(), 20000)
     return () => clearInterval(t)
   }, [])
-
-  // idle sleep decision loop (uses camera.lastPersonSeenAt, not greeting cooldown)
-  // useEffect(() => {
-  //   const CHECK_EVERY_MS = 5000
-  //   const NO_PERSON_MS = 1 * 60 * 1000
-
-  //   const t = setInterval(() => {
-  //     const speech = speechRef.current
-  //     const holo = hologramRef.current
-  //     const cam = cameraRef.current
-  //     if (!speech || !holo || !cam) return
-
-  //     const s = speech.getState?.() || {}
-  //     // no current session (you already reset session to null on inactivity)
-  //     const noSession = !s.sessionId
-
-  //     // don't idle-sleep while system is mid-turn / speaking
-  //     const busy = !!(s.isListening || s.isProcessing || s.isSpeaking)
-
-  //     const lastSeen = cam.lastPersonSeenAt || 0
-  //     const sinceStart = Date.now() - appStartedAtRef.current
-  //     const noPersonLongEnough = lastSeen
-  //       ? Date.now() - lastSeen >= NO_PERSON_MS
-  //       : sinceStart >= NO_PERSON_MS
-
-  //     const shouldIdleSleep =
-  //       noPersonLongEnough && noSession && !busy && conversation?.size == 0
-
-  //     if (shouldIdleSleep !== idleSleepAppliedRef.current) {
-  //       idleSleepAppliedRef.current = shouldIdleSleep
-  //       holo.setIdleSleep?.(shouldIdleSleep)
-  //     }
-  //   }, CHECK_EVERY_MS)
-
-  //   return () => clearInterval(t)
-  // }, [conversation])
 
   useInactivityReset({
     enabled: true,
@@ -285,7 +287,11 @@ export default function App() {
       <KioskGuard enabled={false} allowWheelInMap={pageType === Map} />
       <KioskWatchdog enabled={true} />
       <EnginePageTypeController />
-      {pageType == Main ? <TopPanel /> : null}
+
+      {pageType == Main ? (
+        <TopPanel cameraSignal={cameraSignal} videoRef={videoElRef} />
+      ) : null}
+
       <div id="container"></div>
       {pageType == Map ? <MappedinMap /> : null}
       <ActionBtnPanel />

@@ -95,12 +95,11 @@ button:focus-visible {
   }
 }
 
-#webcam-feed {
+/* #webcam-feed {
   position: fixed;
   top: 20px;
   right: 20px;
 
-  /* width: 150px; */
   height: 180px;
   aspect-ratio: 16/9;
   border-radius: 10px;
@@ -112,7 +111,7 @@ button:focus-visible {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   background-color: #333;
   z-index: 1001;
-}
+} */
 
 #action-buttons-container {
   position: fixed;
@@ -1250,9 +1249,9 @@ modal-hidden {
   user-select: none;
 }*/
 
-#webcam-label {
+/* #webcam-label {
   position: fixed;
-  top: calc(20px + 180px + 5px); /* directly below the video */
+  top: calc(20px + 180px + 5px)
   right: 20px;
   background-color: rgba(0, 0, 0, 0.85);
   color: #fff;
@@ -1263,7 +1262,8 @@ modal-hidden {
   z-index: 9999;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-}
+} */
+
 /* UI hardening for Hologram Kiosk..: no scroll, no selection, no cursor*/
 html,
 body {
