@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''version''''\\)\\)\")",
+      "Bash(pnpm add:*)",
+      "Bash(cp /Users/chanthaithong/Desktop/Nudgyt/NP_HologramBuild_React/node_modules/@vladmandic/face-api/model/age_gender_model* /Users/chanthaithong/Desktop/Nudgyt/NP_HologramBuild_React/public/models/face-api/)",
+      "Bash(cp /Users/chanthaithong/Desktop/Nudgyt/NP_HologramBuild_React/node_modules/@vladmandic/face-api/model/tiny_face_detector_model* /Users/chanthaithong/Desktop/Nudgyt/NP_HologramBuild_React/public/models/face-api/)"
+    ]
+  }
+}

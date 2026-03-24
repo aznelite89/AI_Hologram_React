@@ -4,6 +4,7 @@ const DEFAULTS = {
   detectEveryMs: 220,
   cooldownMs: 750000,
   presenceEveryMs: 1200,
+  ageEveryMs: 1500,
 
   cameraWidth: 640,
   cameraHeight: 480,
@@ -61,6 +62,13 @@ export class CameraEngine {
 
     this._lastSignalKey = ""
     this._lastSignalAt = 0
+
+    this.ageNet = null
+    this._faceapi = null
+    this._ageCanvas = null
+    this._latestEstimatedAge = null
+    this._ageInProgress = false
+    this._lastAgeEstimatedAt = 0
   }
 
   async init({ videoEl }) {
@@ -121,6 +129,13 @@ export class CameraEngine {
     this._lastStableHasFace = false
     this._lastSignalKey = ""
     this._lastSignalAt = 0
+
+    this.ageNet = null
+    this._faceapi = null
+    this._ageCanvas = null
+    this._latestEstimatedAge = null
+    this._ageInProgress = false
+    this._lastAgeEstimatedAt = 0
 
     this._emitState()
   }
@@ -193,14 +208,11 @@ export class CameraEngine {
 
   async _loadModels() {
     try {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
-      )
+      const vision = await FilesetResolver.forVisionTasks(this.cfg.visionBasePath)
 
       this.faceDetector = await FaceDetector.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite"
+          modelAssetPath: this.cfg.faceDetectorModelPath
         },
         runningMode: "VIDEO",
         minDetectionConfidence: this.cfg.minDetectionConfidence,
@@ -208,12 +220,31 @@ export class CameraEngine {
       })
 
       this.modelsLoaded = true
-      console.log("✅ MediaPipe Face Detector loaded (CDN)")
+      console.log("✅ MediaPipe Face Detector loaded (local)")
     } catch (e) {
       this.modelsLoaded = false
       this.cameraError = e
 
-      this.onError(new Error(`MediaPipe CDN load failed: ${e.message}`))
+      this.onError(new Error(`MediaPipe load failed: ${e.message}`))
+    }
+
+    try {
+      await import("@tensorflow/tfjs-backend-webgl")
+      const [tf, faceapi] = await Promise.all([
+        import("@tensorflow/tfjs"),
+        import("@vladmandic/face-api")
+      ])
+      this._faceapi = faceapi
+      await tf.setBackend("webgl")
+      await tf.ready()
+      await faceapi.nets.tinyFaceDetector.loadFromUri("/models/face-api")
+      await faceapi.nets.ageGenderNet.loadFromUri("/models/face-api")
+      this.ageNet = faceapi.nets.ageGenderNet
+      console.log("✅ AgeGenderNet loaded")
+    } catch (e) {
+      this.ageNet = null
+      this._faceapi = null
+      console.warn("[CameraEngine] AgeGenderNet failed, falling back to VISITOR:", e.message)
     }
 
     this._emitState()
@@ -278,11 +309,32 @@ export class CameraEngine {
     return { x, y, w, h }
   }
 
-  _buildBadgePayload({ hasFace, score, faceBox, now, inCooldown }) {
+  _buildBadgePayload({ hasFace, score, faceBox, estimatedAge, now, inCooldown }) {
     const stableHasFace = this._getStablePresence(hasFace)
 
-    const category = "unknown"
-    const categoryScore = 0
+    let category = "unknown"
+    let categoryScore = 0
+    let badgeTitle = "UNKNOWN"
+    let badgeTone = "unknown"
+
+    if (stableHasFace) {
+      if (estimatedAge !== null && estimatedAge !== undefined) {
+        if (estimatedAge < 18) {
+          category = "kid"; badgeTitle = "KIDS"; badgeTone = "kid"
+        } else {
+          category = "adult"; badgeTitle = "ADULT"; badgeTone = "adult"
+        }
+        categoryScore = 1
+      } else {
+        category = "visitor"; badgeTitle = "VISITOR"; badgeTone = "visitor"
+      }
+    }
+
+    const metaText = stableHasFace
+      ? (estimatedAge !== null && estimatedAge !== undefined
+          ? `~${Math.round(estimatedAge)} years old`
+          : "Face detected")
+      : "No visitor"
 
     return {
       hasPerson: stableHasFace,
@@ -293,15 +345,30 @@ export class CameraEngine {
 
       category,
       categoryScore,
-      estimatedAge: null,
+      estimatedAge: estimatedAge ?? null,
 
-      badgeTitle: stableHasFace ? "VISITOR" : "UNKNOWN",
-      badgeTone: stableHasFace ? "visitor" : "unknown",
-      metaText: stableHasFace ? "Face detected" : "No visitor",
+      badgeTitle,
+      badgeTone,
+      metaText,
 
       seenAt: now,
       inCooldown
     }
+  }
+
+  async _runAgeInference(faceBox) {
+    const faceapi = this._faceapi
+    if (!faceapi) return null
+    if (!this._ageCanvas) this._ageCanvas = document.createElement("canvas")
+    const size = 224
+    this._ageCanvas.width = size
+    this._ageCanvas.height = size
+    const ctx = this._ageCanvas.getContext("2d")
+    ctx.drawImage(this.videoEl, faceBox.x, faceBox.y, faceBox.w, faceBox.h, 0, 0, size, size)
+    const predictions = await faceapi
+      .detectAllFaces(this._ageCanvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.1 }))
+      .withAgeAndGender()
+    return predictions?.[0]?.age ?? null
   }
 
   _emitSignalChange(payload) {
@@ -354,10 +421,13 @@ export class CameraEngine {
       const best = this._pickBestDetection(detections)
 
       if (!best) {
+        this._latestEstimatedAge = null
+
         const payload = this._buildBadgePayload({
           hasFace: false,
           score: 0,
           faceBox: null,
+          estimatedAge: null,
           now,
           inCooldown
         })
@@ -375,10 +445,28 @@ export class CameraEngine {
 
       this.lastPersonSeenAt = now
 
+      const shouldRunAge =
+        this.ageNet &&
+        !this._ageInProgress &&
+        faceBox &&
+        now - this._lastAgeEstimatedAt > this.cfg.ageEveryMs
+
+      if (shouldRunAge) {
+        this._ageInProgress = true
+        this._runAgeInference(faceBox)
+          .then((age) => {
+            this._latestEstimatedAge = age
+            this._lastAgeEstimatedAt = Date.now()
+          })
+          .catch((e) => console.warn("[CameraEngine] age inference error:", e.message))
+          .finally(() => { this._ageInProgress = false })
+      }
+
       const payload = this._buildBadgePayload({
         hasFace: true,
         score,
         faceBox,
+        estimatedAge: this._latestEstimatedAge,
         now,
         inCooldown
       })

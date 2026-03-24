@@ -29,6 +29,9 @@ importers:
       '@tensorflow/tfjs-backend-webgl':
         specifier: ^4.22.0
         version: 4.22.0(@tensorflow/tfjs-core@4.22.0)
+      '@vladmandic/face-api':
+        specifier: ^1.7.15
+        version: 1.7.15
       ai:
         specifier: ^5.0.29
         version: 5.0.38(zod@4.1.5)
@@ -843,6 +846,10 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
+
+  '@vladmandic/face-api@1.7.15':
+    resolution: {integrity: sha512-WDMmK3CfNLo8jylWqMoQgf4nIst3M0fzx1dnac96wv/dvMTN4DxC/Pq1DGtduDk1lktCamQ3MIDXFnvrdHTXDw==}
+    engines: {node: '>=14.0.0'}
 
   '@webgpu/types@0.1.38':
     resolution: {integrity: sha512-7LrhVKz2PRh+DD7+S+PVaFd5HxaWQvoMqBbsV9fNJO1pjUs1P8bM2vQVNfk+3URTqbuTI7gkXi0rfsN0IadoBA==}
@@ -2187,6 +2194,8 @@ snapshots:
       vite: 7.1.5(@types/node@22.18.1)
     transitivePeerDependencies:
       - supports-color
+
+  '@vladmandic/face-api@1.7.15': {}
 
   '@webgpu/types@0.1.38': {}
 
