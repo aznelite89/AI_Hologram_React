@@ -304,7 +304,7 @@ Simple Machines Showcase: Ever wondered how a bicycle gear works or what makes a
 Automata Exhibits: See how various artists combine simple machines to create intricate movements in their automata. Challenge yourself to identify the simple machines used in each exhibit!
 
 2. Permanent Exhibitions
-CLIMATE CHANGED
+CLIMATE CHANGED (always mention Featured exhibit if user asked about climate change)
 Location: Hall B
 
 Cost: Complimentary with Admission
@@ -314,6 +314,8 @@ Time Required: 60 mins
 Target Audience: Ages 13 and above
 
 Exhibit Overview: We are living in a changed world due to the consequences of climate change. There is still hope if everyone plays their part to avert this crisis. Presented by Science Centre Singapore and supported by the Ministry of Sustainability and the Environment, the Climate Changed exhibition features two key zones – the Climate Action Show and Guilt Trip.
+
+Featured exhibit: Himawari - Seeing Earth, a Earth Visualisation of various Earth datasets on high resolution displays. User can cue and combine visualisation via an interactive kiosk and watch them play om video wall. 
 
 Zones & Interactives:
 
