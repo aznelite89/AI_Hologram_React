@@ -10,6 +10,7 @@ const DEFAULTS = {
   conversationTimeoutMs: 300000,
   chatCountThreshold: 3,
   geminiModel: "gemini-2.5-flash-lite",
+  geminiFallbackModels: ["gemini-2.5-flash", "gemini-2.0-flash"],
   geminiMaxTokens: 350,
   geminiTemperature: 0.3,
   // ElevenLabs defaults
@@ -471,7 +472,52 @@ export class SpeechEngine {
         parts: [{ text: msg.content }]
       }))
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.cfg.geminiModel}:generateContent?key=${geminiAPIKey}`
+    const modelsToTry = [
+      this.cfg.geminiModel,
+      ...(this.cfg.geminiFallbackModels || [])
+    ].filter(Boolean)
+
+    let lastError = null
+
+    for (const model of modelsToTry) {
+      try {
+        const aiResponse = await this._callGeminiWithModel({
+          model,
+          contents,
+          systemPrompt,
+          signal
+        })
+
+        if (model !== this.cfg.geminiModel) {
+          console.warn(`Gemini fallback model used: ${model}`)
+        }
+
+        return aiResponse
+      } catch (error) {
+        lastError = error
+
+        if (signal?.aborted) {
+          throw error
+        }
+
+        const shouldFallback = this._shouldFallbackToNextModel(error)
+
+        console.warn(
+          `[SpeechEngine] Gemini model failed: ${model}`,
+          error?.message || error
+        )
+
+        if (!shouldFallback) {
+          throw error
+        }
+      }
+    }
+
+    throw lastError || new Error("All Gemini models failed")
+  }
+
+  async _callGeminiWithModel({ model, contents, systemPrompt, signal }) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiAPIKey}`
 
     const resp = await fetch(url, {
       method: "POST",
@@ -501,9 +547,13 @@ export class SpeechEngine {
 
     if (!resp.ok) {
       const errorText = await resp.text()
-      throw new Error(
-        `Gemini API Error: ${resp.status} ${resp.statusText} - ${errorText}`
+      const error = new Error(
+        `Gemini API Error [${model}]: ${resp.status} ${resp.statusText} - ${errorText}`
       )
+      error.status = resp.status
+      error.model = model
+      error.raw = errorText
+      throw error
     }
 
     const data = await resp.json()
@@ -515,11 +565,44 @@ export class SpeechEngine {
       data?.candidates?.[0]?.output
 
     if (!aiResponse) {
-      console.error("❌ No text found in response:", data)
+      console.error(
+        `❌ No text found in Gemini response for model ${model}:`,
+        data
+      )
       return "I’m having trouble generating a response right now. Could you try rephrasing your question?"
     }
 
     return aiResponse
+  }
+
+  _shouldFallbackToNextModel(error) {
+    const status = error?.status
+    const msg = String(error?.message || "").toLowerCase()
+
+    if (error?.name === "AbortError") return false
+
+    // temporary / retryable / overloaded cases
+    if (
+      status === 429 ||
+      status === 500 ||
+      status === 502 ||
+      status === 503 ||
+      status === 504
+    ) {
+      return true
+    }
+
+    if (
+      msg.includes("unavailable") ||
+      msg.includes("high demand") ||
+      msg.includes("overloaded") ||
+      msg.includes("service unavailable") ||
+      msg.includes("rate limit")
+    ) {
+      return true
+    }
+
+    return false
   }
 
   _buildSystemPrompt() {
