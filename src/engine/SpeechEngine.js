@@ -367,9 +367,11 @@ export class SpeechEngine {
         signal: this._abortController.signal
       })
       const aiRes = extractAssistantText(aiResponse)
-      this._addToConversationHistory("assistant", aiRes)
+      const safeReply =
+        aiRes || "Hmm, I had a weird brain glitch. Try asking me again?"
+      this._addToConversationHistory("assistant", safeReply)
       this._setState({ voiceStatus: "Speaking..." })
-      const cleaned = this._sanitizeForSpeech(aiRes)
+      const cleaned = this._sanitizeForSpeech(safeReply)
       await this._speakWithElevenLabs(cleaned)
       // QR handoff: after first answer, when QR becomes visible
       if (!this._qrNudgeShown && this._shouldShowQrNow()) {
