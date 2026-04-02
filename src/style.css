@@ -164,11 +164,11 @@ button:focus-visible {
 
 /* Position each instruction at the same height as its button */
 .button-instruction:nth-of-type(1) {
-  top: calc(50% - 170px); /* Aligns with refresh button */
+  top: calc(50% - 230px); /* Aligns with refresh button */
 }
 
 .button-instruction:nth-of-type(2) {
-  top: calc(50% - 20px);
+  top: calc(50% - 80px);
 }
 
 @keyframes gentle-pulse {
