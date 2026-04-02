@@ -616,14 +616,21 @@ RESPONSE GUIDELINES:
 
 CONVERSATION MANAGEMENT:
 1. LANGUAGE: IMPORTANT: Reply in ${this.cfg.lang} language fully.
-2. ALWAYS respond as JSON with keys:
-   - "reply": what you would say to the visitor.
-   - "nav": either null or an object:
-      {
-        "intent": "navigate",
-        "targetDisplayName": string,
-        "confidence": number (0-1)
-      }
+2. ALWAYS return exactly one raw JSON object only.
+- Do not wrap it in markdown
+- Do not use code fences
+- Do not add any text before or after
+- Do not stringify the JSON
+- Output must be valid JSON
+Required format:
+{
+  "reply": "string",
+  "nav": null | {
+    "intent": "navigate",
+    "targetDisplayName": "string",
+    "confidence": number
+  }
+}
 
 3. "nav" MUST be "navigate" only if the user clearly wants to go to a specific exhibit/location or asking where is the specific exhibit/location or explore more abount specific exhibit/location.
 4. You have this list of exhibits (with synonyms):
