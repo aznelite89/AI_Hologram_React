@@ -528,7 +528,25 @@ export class SpeechEngine {
         systemInstruction: { parts: [{ text: systemPrompt }] },
         generationConfig: {
           maxOutputTokens: this.cfg.geminiMaxTokens,
-          temperature: this.cfg.geminiTemperature
+          temperature: this.cfg.geminiTemperature,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              reply: { type: "STRING" },
+              nav: {
+                nullable: true,
+                type: "OBJECT",
+                properties: {
+                  intent: { type: "STRING" },
+                  targetDisplayName: { type: "STRING" },
+                  confidence: { type: "NUMBER" }
+                },
+                required: ["intent", "targetDisplayName", "confidence"]
+              }
+            },
+            required: ["reply", "nav"]
+          }
         },
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
