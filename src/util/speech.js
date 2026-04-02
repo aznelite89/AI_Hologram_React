@@ -19,26 +19,60 @@ export function getLastNMessages(data, n) {
 export function extractAssistantText(raw) {
   if (raw == null) return ""
 
-  // If backend already returns an object
-  if (typeof raw === "object") {
-    if (typeof raw.reply === "string") return raw.reply
-    if (typeof raw.text === "string") return raw.text
-    if (typeof raw.content === "string") return raw.content
-    if (raw.message && typeof raw.message.reply === "string")
-      return raw.message.reply
-    if (raw.data && typeof raw.data.reply === "string") return raw.data.reply
+  const pickReply = (value) => {
+    if (value == null) return ""
+
+    if (typeof value === "string") return value
+    if (typeof value === "number" || typeof value === "boolean")
+      return String(value)
+
+    if (typeof value === "object") {
+      if (typeof value.reply === "string") return value.reply
+      if (typeof value.text === "string") return value.text
+      if (typeof value.content === "string") return value.content
+      if (value.message && typeof value.message.reply === "string")
+        return value.message.reply
+      if (value.data && typeof value.data.reply === "string")
+        return value.data.reply
+    }
+
     return ""
+  }
+
+  const tryJsonParseDeep = (text, maxDepth = 3) => {
+    let current = text
+
+    for (let i = 0; i < maxDepth; i++) {
+      if (typeof current !== "string") return current
+
+      const trimmed = current.trim()
+      if (!trimmed) return ""
+
+      try {
+        current = JSON.parse(trimmed)
+      } catch {
+        return current
+      }
+    }
+
+    return current
+  }
+
+  // If backend already returns object
+  if (typeof raw === "object") {
+    return pickReply(raw)
   }
 
   let s = String(raw).trim()
   if (!s) return ""
 
-  // Remove leading "JSON" label lines
+  // Remove leading JSON label
   s = s.replace(/^\s*JSON\s*\n/i, "").trim()
 
-  //Strip markdown fences if present
+  // Strip markdown fences
   const fenced = s.match(/```(?:json|JSON)?\s*([\s\S]*?)\s*```/i)
   if (fenced?.[1]) s = fenced[1].trim()
+
   if (s.startsWith("```")) {
     s = s
       .replace(/^```(?:json|JSON)?\s*/i, "")
@@ -48,66 +82,40 @@ export function extractAssistantText(raw) {
 
   s = s.replace(/^\s*JSON\s*\n/i, "").trim()
 
-  //try to extract a JSON object/array even if there is leading prose
-  // Strategy:
-  // - find first "{" and last "}" and try parse
-  // - if fails, find first "[" and last "]" and try parse
+  // 1) First try deep parse on whole string
+  let parsed = tryJsonParseDeep(s)
+  const directReply = pickReply(parsed)
+  if (directReply) return directReply
+
+  // 2) If whole string not parseable, try extracting JSON slice
   const tryParseJsonSlice = (text, openChar, closeChar) => {
     const start = text.indexOf(openChar)
     const end = text.lastIndexOf(closeChar)
     if (start === -1 || end === -1 || end <= start) return null
+
     const slice = text.slice(start, end + 1).trim()
-    try {
-      return { parsed: JSON.parse(slice), slice }
-    } catch {
-      return null
-    }
+    const parsedSlice = tryJsonParseDeep(slice)
+    return parsedSlice
   }
 
-  // if whole thing is JSON, parse directly (your original intent)
-  const looksLikeJson =
-    (s.startsWith("{") && s.endsWith("}")) ||
-    (s.startsWith("[") && s.endsWith("]"))
+  parsed = tryParseJsonSlice(s, "{", "}")
+  const objReply = pickReply(parsed)
+  if (objReply) return objReply
 
-  let parsedObj = null
+  parsed = tryParseJsonSlice(s, "[", "]")
+  const arrReply = pickReply(parsed)
+  if (arrReply) return arrReply
 
-  if (looksLikeJson) {
-    try {
-      parsedObj = JSON.parse(s)
-    } catch {
-      // fall through to slice extraction
-    }
+  // 3) Last fallback: if string itself looks quoted, unquote once and retry
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    const unwrapped = s.slice(1, -1)
+    const reparsed = tryJsonParseDeep(unwrapped)
+    const reparsedReply = pickReply(reparsed)
+    if (reparsedReply) return reparsedReply
   }
 
-  if (parsedObj == null) {
-    // Try object slice first (most common)
-    const objTry = tryParseJsonSlice(s, "{", "}")
-    if (objTry) parsedObj = objTry.parsed
-  }
-
-  if (parsedObj == null) {
-    // Try array slice (less common)
-    const arrTry = tryParseJsonSlice(s, "[", "]")
-    if (arrTry) parsedObj = arrTry.parsed
-  }
-
-  // If able to parse something, extract reply
-  if (parsedObj != null) {
-    if (typeof parsedObj === "string") return parsedObj
-    if (typeof parsedObj === "number" || typeof parsedObj === "boolean")
-      return String(parsedObj)
-
-    if (parsedObj && typeof parsedObj === "object") {
-      if (typeof parsedObj.reply === "string") return parsedObj.reply
-      if (typeof parsedObj.text === "string") return parsedObj.text
-      if (typeof parsedObj.content === "string") return parsedObj.content
-
-      if (parsedObj.message && typeof parsedObj.message.reply === "string")
-        return parsedObj.message.reply
-      return ""
-    }
-  }
-
-  // nothing foud.. return cleaned prose
   return s
 }
