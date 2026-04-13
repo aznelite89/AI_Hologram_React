@@ -88,6 +88,11 @@ export class SpeechEngine {
     this._activeSpeakId = 0
     // for prevent speech overlapping
     this._ttsAbortController = null
+    // stale-flag recovery (kiosk resilience)
+    this._processingStartedAt = 0
+    this._speakingStartedAt = 0
+    this._maxProcessingMs = 60000 // 60s before force-reset
+    this._maxSpeakingMs = 45000 // 45s before force-reset
     // QR handoff nudge (speak once per conversation)
     this._qrNudgeShown = false
     this._qrNudgeDelayMs = 450 // tiny pause after first answer
@@ -120,9 +125,17 @@ export class SpeechEngine {
     this._initSpeechRecognition()
     this._emitState()
     this._emitConversation()
+    // periodic safety check for stuck flags (kiosk resilience)
+    this._stuckFlagWatchdog = setInterval(() => {
+      this._forceResetStaleFlags()
+    }, 15000)
   }
 
   destroy() {
+    if (this._stuckFlagWatchdog) {
+      clearInterval(this._stuckFlagWatchdog)
+      this._stuckFlagWatchdog = null
+    }
     try {
       this.stop()
       this._stopAudio(true)
@@ -175,10 +188,25 @@ export class SpeechEngine {
   }
 
   startListening() {
-    if (this.isProcessing) return
-    if (this.isSpeaking) return // don’t start STT while TTS is playing
+    // Safety valve: force-reset flags stuck for too long (kiosk resilience)
+    this._forceResetStaleFlags()
+
+    if (this.isProcessing) {
+      console.warn("[SpeechEngine] startListening blocked: isProcessing=true")
+      return
+    }
+    if (this.isSpeaking) {
+      console.warn("[SpeechEngine] startListening blocked: isSpeaking=true")
+      return
+    }
+
     if (!this.recognition) this._initSpeechRecognition()
-    if (!this.recognition) return
+    if (!this.recognition) {
+      console.warn(
+        "[SpeechEngine] startListening blocked: recognition unavailable"
+      )
+      return
+    }
 
     if (!this.isListening) {
       try {
@@ -189,7 +217,28 @@ export class SpeechEngine {
         this._emitState()
         this._armSilencePrompt()
       } catch (e) {
-        this.onError(e)
+        console.error("[SpeechEngine] recognition.start() failed:", e)
+        // Re-create recognition object to recover from InvalidStateError
+        this.recognition = null
+        this._initSpeechRecognition()
+        // Retry once with fresh object
+        try {
+          if (this.recognition) {
+            this.recognition.start()
+            this.isListening = true
+            this._setVoiceStatus("Listening...")
+            this._emitState()
+            this._armSilencePrompt()
+          }
+        } catch (retryErr) {
+          console.error(
+            "[SpeechEngine] recognition retry also failed:",
+            retryErr
+          )
+          this.onError(retryErr)
+          this._setVoiceStatus("Mic error - please try again")
+          this._emitState()
+        }
       }
     }
   }
@@ -934,9 +983,24 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
 
       await audio.play()
 
+      const AUDIO_TIMEOUT_MS = 30000
       await new Promise((resolve, reject) => {
-        audio.onended = resolve
-        audio.onerror = reject
+        const timer = setTimeout(() => {
+          console.warn(
+            "[SpeechEngine] Audio playback timed out after",
+            AUDIO_TIMEOUT_MS,
+            "ms"
+          )
+          resolve()
+        }, AUDIO_TIMEOUT_MS)
+        audio.onended = () => {
+          clearTimeout(timer)
+          resolve()
+        }
+        audio.onerror = (err) => {
+          clearTimeout(timer)
+          reject(err)
+        }
       })
     } catch (err) {
       // Abort is expected when user interrupts quickly—don’t treat it as an error or fallback....
@@ -949,20 +1013,20 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
         await this._speakFallback(line)
       }
     } finally {
-      // cleanup audio URL + animation only if we are still the active speak
+      // ALWAYS clean up this speak's resources (even if superseded)
+      this._stopLips()
+      this.hologram?.closeMouth?.()
+      this.hologram?.stopTalkingAnimation?.()
+      if (audioUrl) {
+        try {
+          URL.revokeObjectURL(audioUrl)
+        } catch {}
+      }
+      if (this._currentAudio === audio) {
+        this._currentAudio = null
+      }
+      // Only flip isSpeaking=false if we are still the active speaker
       if (this._activeSpeakId === speakId) {
-        this._stopLips()
-        this.hologram?.closeMouth?.()
-        this.hologram?.stopTalkingAnimation?.()
-        if (audioUrl) {
-          try {
-            URL.revokeObjectURL(audioUrl)
-          } catch {}
-        }
-        // clear only if still current
-        if (this._currentAudio === audio) {
-          this._currentAudio = null
-        }
         this._endSpeakingIfCurrent(speakId)
       }
       // clear abort controller only if it's still ours
@@ -1027,6 +1091,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     // ensure state flips when stopping audio
     if (this.isSpeaking) {
       this.isSpeaking = false
+      this._speakingStartedAt = 0
       this._emitState()
     }
   }
@@ -1034,6 +1099,7 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
   async _speakFallback(text) {
     if (!("speechSynthesis" in window)) return
     this.isSpeaking = true
+    this._speakingStartedAt = Date.now()
     this._emitState()
     return new Promise((resolve) => {
       const utterance = new SpeechSynthesisUtterance(text)
@@ -1044,12 +1110,14 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
       utterance.onend = () => {
         this.hologram?.stopTalkingAnimation?.()
         this.isSpeaking = false
+        this._speakingStartedAt = 0
         this._emitState()
         resolve()
       }
       utterance.onerror = () => {
         this.hologram?.stopTalkingAnimation?.()
         this.isSpeaking = false
+        this._speakingStartedAt = 0
         this._emitState()
         resolve()
       }
@@ -1220,12 +1288,14 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
     this._stopAudio(true)
 
     this.isSpeaking = true
+    this._speakingStartedAt = Date.now()
     this._emitState()
   }
 
   _endSpeakingIfCurrent(speakId) {
     if (this._activeSpeakId !== speakId) return
     this.isSpeaking = false
+    this._speakingStartedAt = 0
     this._emitState()
   }
 
@@ -1233,14 +1303,51 @@ Remember: You're not an information kiosk. You're the friend who knows all the c
   _setState(patch = {}) {
     if (typeof patch.isListening === "boolean")
       this.isListening = patch.isListening
-    if (typeof patch.isProcessing === "boolean")
+    if (typeof patch.isProcessing === "boolean") {
       this.isProcessing = patch.isProcessing
+      this._processingStartedAt = patch.isProcessing ? Date.now() : 0
+    }
     if (typeof patch.voiceStatus === "string")
       this.voiceStatus = patch.voiceStatus
     if (Object.prototype.hasOwnProperty.call(patch, "sessionId")) {
       this.currentSession = patch.sessionId
     }
     this._emitState()
+  }
+
+  _forceResetStaleFlags() {
+    const now = Date.now()
+    let didReset = false
+
+    if (
+      this.isProcessing &&
+      this._processingStartedAt > 0 &&
+      now - this._processingStartedAt > this._maxProcessingMs
+    ) {
+      console.warn(
+        `[SpeechEngine] Force-resetting stale isProcessing (stuck for ${now - this._processingStartedAt}ms)`
+      )
+      this.isProcessing = false
+      this._processingStartedAt = 0
+      didReset = true
+    }
+
+    if (
+      this.isSpeaking &&
+      this._speakingStartedAt > 0 &&
+      now - this._speakingStartedAt > this._maxSpeakingMs
+    ) {
+      console.warn(
+        `[SpeechEngine] Force-resetting stale isSpeaking (stuck for ${now - this._speakingStartedAt}ms)`
+      )
+      this._stopAudio(true)
+      this.isSpeaking = false
+      this._speakingStartedAt = 0
+      didReset = true
+    }
+
+    if (didReset) this._emitState()
+    return didReset
   }
 
   _emitState() {
