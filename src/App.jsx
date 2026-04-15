@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import ActionBtnPanel from "./components/ActionBtnPanel.jsx"
 import TopPanel from "./components/TopPanel/index.jsx"
@@ -52,6 +52,7 @@ export default function App() {
   const lastFlushAtRef = useRef(0)
 
   const appStartedAtRef = useRef(Date.now())
+  const [webcamFeedReady, setWebcamFeedReady] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -176,6 +177,10 @@ export default function App() {
             // avoid piling up greetings if detection fires repeatedly
             await speech?.speakGreeting?.()
           },
+          onState: (s) => {
+            if (cancelled) return
+            setWebcamFeedReady(!!s.isCameraReady)
+          },
           onError: (e) => console.error("CameraEngine error:", e)
         })
 
@@ -285,7 +290,9 @@ export default function App() {
       <KioskGuard enabled={false} allowWheelInMap={pageType === Map} />
       <KioskWatchdog enabled={true} />
       <EnginePageTypeController />
-      {pageType == Main ? <TopPanel /> : null}
+      {pageType == Main ? (
+        <TopPanel showWebcamLabel={webcamFeedReady} />
+      ) : null}
       <div id="container"></div>
       {pageType == Map ? <MappedinMap /> : null}
       <ActionBtnPanel />

@@ -1,6 +1,6 @@
 import React from "react"
 
-const TopPanel = () => {
+const TopPanel = ({ showWebcamLabel = false }) => {
   return (
     <>
       <div id="welcome-container">
@@ -17,7 +17,9 @@ const TopPanel = () => {
       </div>
 
       <video id="webcam-feed" autoPlay muted playsInline />
-      <div id="webcam-label">AI can make mistakes, so double-check it</div>
+      {showWebcamLabel ? (
+        <div id="webcam-label">AI can make mistakes, so double-check it</div>
+      ) : null}
     </>
   )
 }
