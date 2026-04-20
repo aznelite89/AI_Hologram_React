@@ -437,20 +437,6 @@ export class HologramEngine {
     dirLight.intensity = 2.5
     this.scene.add(dirLight)
 
-    // Ground
-    const groundGeometry = new THREE.PlaneGeometry(100, 100)
-    const groundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x808080,
-      roughness: 0.8,
-      metalness: 0.2,
-      transparent: true,
-      opacity: 0.5
-    })
-    const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial)
-    groundMesh.rotation.x = -Math.PI / 2
-    groundMesh.receiveShadow = true
-    this.scene.add(groundMesh)
-
     await this._loadBackground(this.backgroundUrl)
     await this._loadAvatar(this.avatarUrl)
 
