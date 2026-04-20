@@ -343,6 +343,7 @@ export class HologramEngine {
     this.model = null
     this.morph = null
     this.gaze = null
+    this._backgroundTexture = null
 
     // sleeping model, actions
     this.sleepModel = null
@@ -520,6 +521,7 @@ export class HologramEngine {
     // reset sleep reason flags
     this._sleepQuiet = false
     this._sleepIdle = false
+    this._backgroundTexture = null
   }
 
   setViseme(visemeName, influence = 1) {
@@ -640,13 +642,66 @@ export class HologramEngine {
     this.camera.updateProjectionMatrix()
 
     this.renderer.setSize(window.innerWidth, window.innerHeight)
+    this._applyBackgroundCover()
 
     // keep your behavior:
     this.camera.position.set(0, 1.2, 3)
     this.camera.lookAt(0, 1, 0)
   }
 
+  _applyBackgroundCover() {
+    const texture = this._backgroundTexture
+    const renderer = this.renderer
+    if (!texture || !renderer) return
+
+    const img = texture.image
+    const iw = img?.naturalWidth || img?.videoWidth || img?.width
+    const ih = img?.naturalHeight || img?.videoHeight || img?.height
+    if (!iw || !ih) return
+
+    const canvas = renderer.domElement
+    const cw = canvas?.width
+    const ch = canvas?.height
+    if (!cw || !ch) return
+
+    const imageAspect = iw / ih
+    const canvasAspect = cw / ch
+
+    // COVER: fill canvas without distortion by cropping
+    if (imageAspect > canvasAspect) {
+      // image is wider: crop left/right
+      const scale = canvasAspect / imageAspect
+      texture.repeat.set(scale, 1)
+      texture.offset.set((1 - scale) / 2, 0)
+    } else {
+      // image is taller: crop top/bottom
+      const scale = imageAspect / canvasAspect
+      texture.repeat.set(1, scale)
+      texture.offset.set(0, (1 - scale) / 2)
+    }
+    texture.needsUpdate = true
+  }
+
   async _loadBackground(modelPath) {
+    const IMAGE_EXT_RE = /\.(png|jpe?g|webp)$/i
+    const backgroundUrl = String(modelPath || "")
+
+    if (IMAGE_EXT_RE.test(backgroundUrl)) {
+      const textureLoader = new THREE.TextureLoader()
+      const texture = await textureLoader.loadAsync(backgroundUrl)
+      // three r0.179+ uses colorSpace instead of encoding
+      texture.colorSpace = THREE.SRGBColorSpace
+      texture.wrapS = THREE.ClampToEdgeWrapping
+      texture.wrapT = THREE.ClampToEdgeWrapping
+      texture.minFilter = THREE.LinearFilter
+      texture.magFilter = THREE.LinearFilter
+      this.scene.background = texture
+      this._backgroundTexture = texture
+      this._applyBackgroundCover()
+      console.log("Background image loaded successfully")
+      return texture
+    }
+
     const loader = new GLTFLoader()
     return new Promise((resolve, reject) => {
       loader.load(

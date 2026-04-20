@@ -60,7 +60,7 @@ export default function App() {
     if (!containerEl) return
 
     const hologram = new HologramEngine({
-      backgroundUrl: "/SC_BG.glb",
+      backgroundUrl: "/SC_BG.png",
       avatarUrl: "/Male_Waving_Final.glb",
       showStats: true,
       onAvatarTap: () => {
@@ -290,9 +290,7 @@ export default function App() {
       <KioskGuard enabled={false} allowWheelInMap={pageType === Map} />
       <KioskWatchdog enabled={true} />
       <EnginePageTypeController />
-      {pageType == Main ? (
-        <TopPanel showWebcamLabel={webcamFeedReady} />
-      ) : null}
+      {pageType == Main ? <TopPanel showWebcamLabel={webcamFeedReady} /> : null}
       <div id="container"></div>
       {pageType == Map ? <MappedinMap /> : null}
       <ActionBtnPanel />
