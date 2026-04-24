@@ -165,7 +165,16 @@ const ChatPanel = ({
         }}
         onClose={() => setLangOpen(false)}
       />
-      <button id="btn-view-conversation" onClick={onToggleConversation}>
+      <button
+        id="btn-view-conversation"
+        type="button"
+        onClick={(e) => {
+          e.preventDefault()
+          const el = document.activeElement
+          if (el && typeof el.blur === "function") el.blur()
+          onToggleConversation?.()
+        }}
+      >
         <span>
           <svg
             width="40"
