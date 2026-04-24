@@ -8,7 +8,7 @@ const DEFAULTS = {
   lang: "en-US",
   maxHistoryLength: 20,
   conversationTimeoutMs: 300000,
-  chatCountThreshold: 3,
+  chatCountThreshold: 2,
   geminiModel: "gemini-2.5-flash-lite",
   geminiFallbackModels: ["gemini-2.5-flash", "gemini-2.0-flash"],
   geminiMaxTokens: 350,
