@@ -805,7 +805,7 @@ export class HologramEngine {
   _isQuietHoursGMT8(date = new Date()) {
     const d = this._getNowGMT8(date)
     const h = d.getHours()
-    return h >= 19 || h < 7 // quite hour setup here..
+    return h >= 24 || h < 7 // quite hour setup here..
   }
 
   _applySleepMode() {
